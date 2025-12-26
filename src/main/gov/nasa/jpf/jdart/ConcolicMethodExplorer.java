@@ -80,6 +80,8 @@ public class ConcolicMethodExplorer {
    * logger
    */
   private final JPFLogger logger = JPF.getLogger("jdart");
+
+  private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
   
   /**
    * explored method
@@ -195,37 +197,49 @@ public class ConcolicMethodExplorer {
   }
 
   public boolean hasMoreChoices() {
-    // If the initValuation is null, then the initial
-    // valuation has not been read; we are *before* the
-    // first execution
-    if(initValuation == null)
+    // Before first execution
+    if (initValuation == null) {
+      debugLogger.finest("[hasMoreChoices] before first execution -> true");
       return true;
-    
-    // If there is no next valuation, try to find one
-    if(nextValuation == null)
+    }
+
+    // Compute next valuation if needed
+    if (nextValuation == null) {
       nextValuation = constraintsTree.findNext();
-    return (nextValuation != null);
+      debugLogger.finest("[hasMoreChoices] findNext() -> " + (nextValuation == null ? "null (no more paths)" : "valuation found"));
+    }
+
+    debugLogger.finest("[hasMoreChoices] has more choices -> " + (nextValuation != null));
+    return nextValuation != null;
   }
-  
+
+
   public boolean advanceValuation() {
-    if(nextValuation == null)
+    // Ensure a next valuation exists
+    if (nextValuation == null) {
       nextValuation = constraintsTree.findNext();
+      debugLogger.finest("[advanceValuation] findNext() -> " + (nextValuation == null ? "null (cannot advance)" : "valuation found"));
+    }
 
     if (nextValuation != null) {
       for (Variable v : currValuation.getVariables()) {
         if (!nextValuation.containsValueFor(v)) {
-          nextValuation.addEntry(new ValuationEntry(v, 
-                  nextValuation.getValue(v))); // returns the default value for this type
+          debugLogger.finest("[advanceValuation] inserting default for variable: " + v.getName());
+          nextValuation.addEntry(
+                  new ValuationEntry(v, nextValuation.getValue(v))
+          );
         }
       }
     }
     currValuation = nextValuation;
     nextValuation = null;
-    
-    return (currValuation != null);
+
+    debugLogger.finest("[advanceValuation] new valuation -> " + currValuation.toString());
+
+    return currValuation != null;
   }
-  
-  
+
+
   /**
    * registers method for concolic execution. Puts symbolic input values onto
    * the stack ...

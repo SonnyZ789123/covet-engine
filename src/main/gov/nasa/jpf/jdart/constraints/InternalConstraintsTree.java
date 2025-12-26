@@ -27,10 +27,7 @@ import gov.nasa.jpf.util.JPFLogger;
 import gov.nasa.jpf.util.Pair;
 import gov.nasa.jpf.vm.Instruction;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 
 public class InternalConstraintsTree {
 
@@ -286,6 +283,8 @@ public class InternalConstraintsTree {
   }
   
   private final JPFLogger logger = JPF.getLogger("jdart");
+
+  private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
   
   
   private final Node root = new Node(null);
@@ -363,6 +362,10 @@ public class InternalConstraintsTree {
   }
   
   public BranchEffect decision(Instruction insn, int branchIdx, Expression<Boolean>[] decisions) {
+    debugLogger.finest("[decision] entry -> insn=" + insn,
+            ", branchIdx=" + branchIdx +
+            ", current node depth=" + current.depth +
+            ", expectedPath=" + expectedPath);
     if(anaConf.maxDepthExceeded(current.depth)) {
       //System.err.println("DEPTH EXCEEDED");
       return BranchEffect.NORMAL; // just ignore it
@@ -388,6 +391,8 @@ public class InternalConstraintsTree {
     if(!diverged) {
       if(depth < expectedPath.size()) {
         int expected = expectedPath.get(depth).intValue();
+        debugLogger.finest("[decision] node depth < expected path size -> checking if expected branch " +
+                expected + " == " + branchIdx);
         if(expected != branchIdx) {
             diverged = true;
             return BranchEffect.UNEXPECTED;
@@ -395,6 +400,7 @@ public class InternalConstraintsTree {
       }
       else {
         Expression<Boolean> constraint = data.getConstraint(branchIdx);
+        debugLogger.finest("[decision] insn=" + insn + ", adding constraint=" + constraint.toString());
         solverCtx.push();
         try {
           solverCtx.add(constraint);
@@ -425,93 +431,143 @@ public class InternalConstraintsTree {
   private Node backtrack(Node node, boolean pop) {
     if(node == null)
       return null;
-    
+
     while(!node.isOpen()) {
       boolean exh = node.isExhausted();
       node = node.getParent();
-      if(node == null)
+
+      if (node == null) {
+        debugLogger.finest("[backtrack] reached root parent -> stop");
         break;
+      }
+
       if(pop) {
         solverCtx.pop();
-        expectedPath.remove(expectedPath.size() - 1);
+        int removed = expectedPath.remove(expectedPath.size() - 1);
+        debugLogger.finest(
+                "[backtrack] pop -> removed branch " + removed +
+                        ", new expectedPath=" + expectedPath);
       }
+
       DecisionData dec = node.decisionData();
       dec.decrementOpen();
-      if(exh)
+
+      if (exh) {
         dec.decrementUnexhausted();
+        debugLogger.finest("[backtrack] exhausted child -> decrement unexhausted");
+      }
     }
-    
+
+    debugLogger.finest("[backtrack] new expectedPath=" + expectedPath);
     return node;
   }
-  
+
   public Valuation findNext() {
     replay = false;
-    
-    if(diverged) {
+    debugLogger.finest("[findNext] entry -> expectedPath=" + expectedPath);
+
+    if (diverged) {
+      debugLogger.finest("[findNext] divergence detected -> backtrack without pop");
       backtrack(current, false);
       diverged = false;
     }
+
     current = root;
-    while((currentTarget = backtrack(currentTarget, true)) != null) {
+
+    while ((currentTarget = backtrack(currentTarget, true)) != null) {
+
       DecisionData dec = currentTarget.decisionData();
-      if(dec == null) {
+
+      // ----- LEAF / VIRGIN NODE -----
+      if (dec == null) {
         assert currentTarget.isVirgin();
+
         int ad = currentTarget.incAltDepth();
-        if(anaConf.maxAltDepthExceeded(ad) || anaConf.maxDepthExceeded(currentTarget.depth)) {
+        if (anaConf.maxAltDepthExceeded(ad) || anaConf.maxDepthExceeded(currentTarget.depth)) {
+          debugLogger.finest(
+                  "[findNext] depth limit exceeded -> dontKnow, depth=" +
+                          currentTarget.depth + ", altDepth=" + ad
+          );
           currentTarget.dontKnow();
           continue;
         }
+
         Valuation val = new Valuation();
         logger.finer("Finding new valuation");
+        debugLogger.finest(
+                "[findNext] solve for " + val +
+                        ", expectedPath=" + expectedPath
+        );
         Result res = solverCtx.solve(val);
         logger.finer("Found: " + res + " : " + val);
-        // FIXME: prevent generation of valuation that has been used before.        
-        switch(res) {
-        case UNSAT:
-          currentTarget.unsatisfiable();
-          break;
-        case DONT_KNOW:
-          currentTarget.dontKnow();
-          break;
-        case SAT:
-        	Node predictedTarget = simulate(val);
-        	if(predictedTarget != null && predictedTarget != currentTarget) {
-        		boolean inconclusive = predictedTarget.isExhausted();
-        		logger.info("Predicted ", inconclusive ? "inconclusive " : "", "divergence");
-        		if(inconclusive) {
-        			logger.finer("NOT attempting execution");
-        			currentTarget.dontKnow();
-        			break;
-        		}
-        	}
-          if (val.equals(prev)) {
-            logger.finer("Wont re-execute with known valuation");
-            currentTarget.dontKnow();
+
+        switch (res) {
+          case UNSAT:
+            currentTarget.unsatisfiable();
+            debugLogger.finest("[findNext] solve -> UNSAT");
             break;
-          }
-          prev = val;
-          return ExpressionUtil.combineValuations(val);
+
+          case DONT_KNOW:
+            currentTarget.dontKnow();
+            debugLogger.finest("[findNext] solve -> DONT_KNOW");
+            break;
+
+          case SAT:
+            Node predictedTarget = simulate(val);
+            if (predictedTarget != null && predictedTarget != currentTarget) {
+              boolean inconclusive = predictedTarget.isExhausted();
+              logger.info("Predicted ", inconclusive ? "inconclusive " : "", "divergence");
+              debugLogger.finest("[findNext] predicted divergence -> exhausted=" + inconclusive);
+              if (inconclusive) {
+                debugLogger.finest("[findNext] predicted divergence -> DONT_KNOW");
+                logger.finer("NOT attempting execution");
+                currentTarget.dontKnow();
+                break;
+              }
+            }
+
+            if (val.equals(prev)) {
+              debugLogger.finest("[findNext] duplicate valuation -> skip");
+              logger.finer("Wont re-execute with known valuation");
+              currentTarget.dontKnow();
+              break;
+            }
+
+            prev = val;
+            debugLogger.finest("[findNext] SAT -> returning valuation " + val + " , expectedPath=" + expectedPath);
+            return ExpressionUtil.combineValuations(val);
         }
       }
+
+      // ----- DECISION NODE -----
       else {
         int nextIdx = dec.nextOpenChild();
-        assert (nextIdx != -1);
+        assert nextIdx != -1;
+
         Expression<Boolean> constraint = dec.getConstraint(nextIdx);
         Node c = dec.getChild(nextIdx);
         currentTarget = c;
+
         solverCtx.push();
         expectedPath.add(nextIdx);
+
+        debugLogger.finest(
+                "[findNext] decision node descend -> branch " + nextIdx +
+                        ", constraint=" + constraint.toString() +
+                        ", new expectedPath=" + expectedPath
+        );
+
         try {
           solverCtx.add(constraint);
-        }
-        catch(Exception ex) {
-          logger.finer(ex.getMessage());           
+        } catch(Exception ex) {
+          logger.finer(ex.getMessage());
           // ex.printStackTrace();
           //currentTarget.dontKnow(); // TODO good idea?
         }
       }
     }
-    
+
+    // ----- PRESET FALLBACK -----
     //We fall back on the preset values that might be specified in the
     //jpf config -- this only happens when we cannot find a new target
     //node from exercising the constraints tree
@@ -520,9 +576,12 @@ public class InternalConstraintsTree {
       currentTarget = root;
       assert this.expectedPath.isEmpty();
       replay = true;
+
+      debugLogger.finest("[findNext] fallback to preset valuation");
       return preset.next();
     }
 
+    debugLogger.finest("[findNext] no more valuations -> return null");
     return null;
   }
 

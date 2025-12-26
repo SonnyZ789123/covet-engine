@@ -107,7 +107,7 @@ public final class ConcolicExplorer {
    * @return 
    */
   public ConcolicMethodExplorer newAnalysis(String id, MethodInfo mi, StackFrame sf) {
-    //logger.finest("ConcolicExplorer.newAnalysis()");
+    logger.finest("ConcolicExplorer.newAnalysis()");
     // analyze methods only once and only if
     // no other analysis is currently active
     if(mi == null) {
