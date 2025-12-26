@@ -30,11 +30,8 @@ import gov.nasa.jpf.jdart.config.ConcolicConfig;
 import gov.nasa.jpf.jdart.config.ConcolicMethodConfig;
 import gov.nasa.jpf.jdart.config.ConcolicValues;
 import gov.nasa.jpf.jdart.config.ParamConfig;
-import gov.nasa.jpf.jdart.constraints.ConstraintsTree;
-import gov.nasa.jpf.jdart.constraints.InternalConstraintsTree;
+import gov.nasa.jpf.jdart.constraints.*;
 import gov.nasa.jpf.jdart.constraints.InternalConstraintsTree.BranchEffect;
-import gov.nasa.jpf.jdart.constraints.PathResult;
-import gov.nasa.jpf.jdart.constraints.PostCondition;
 import gov.nasa.jpf.jdart.objects.SymbolicObjectsContext;
 import gov.nasa.jpf.util.JPFLogger;
 import gov.nasa.jpf.vm.ClassInfo;
@@ -119,6 +116,11 @@ public class ConcolicMethodExplorer {
    */
   
   private final SolverContext solverCtx;
+
+  /**
+   * exploration strategy
+   */
+  private final ExplorationStrategy explorationStrategy;
   
 
   public ConcolicMethodExplorer(ConcolicConfig config, String id, MethodInfo mi) {
@@ -133,6 +135,7 @@ public class ConcolicMethodExplorer {
     // create a constraints tree
     this.solverCtx = config.getSolver().createContext();    
     this.constraintsTree = new InternalConstraintsTree(solverCtx, anaConf, vals);
+    this.explorationStrategy = config.getExplorationStrategy();
   }
   
   public void setExplore(boolean explore) {
@@ -205,7 +208,7 @@ public class ConcolicMethodExplorer {
 
     // Compute next valuation if needed
     if (nextValuation == null) {
-      nextValuation = constraintsTree.findNext();
+      nextValuation = explorationStrategy.findNext(constraintsTree);
       debugLogger.finest("[hasMoreChoices] findNext() -> " + (nextValuation == null ? "null (no more paths)" : "valuation found"));
     }
 
@@ -217,7 +220,7 @@ public class ConcolicMethodExplorer {
   public boolean advanceValuation() {
     // Ensure a next valuation exists
     if (nextValuation == null) {
-      nextValuation = constraintsTree.findNext();
+      nextValuation = explorationStrategy.findNext(constraintsTree);
       debugLogger.finest("[advanceValuation] findNext() -> " + (nextValuation == null ? "null (cannot advance)" : "valuation found"));
     }
 

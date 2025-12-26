@@ -41,7 +41,7 @@ public class InternalConstraintsTree {
   private static abstract class NodeData {
   }
   
-  private static final class DecisionData extends NodeData {
+  static final class DecisionData extends NodeData {
     private final Node node;
     private final Instruction branchInsn;
     private final Expression<Boolean>[] constraints;
@@ -164,7 +164,7 @@ public class InternalConstraintsTree {
     }
   }
   
-  private static final class Node {
+  static final class Node {
     private final Node parent;
     private final int depth;
     private int altDepth;
@@ -287,21 +287,21 @@ public class InternalConstraintsTree {
   private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
   
   
-  private final Node root = new Node(null);
-  private Node current = root; // This is the current node in our EXPLORATION
-  private Node currentTarget = root; // This is the node the valuation computed by the constraint solver SHOULD reach
+  final Node root = new Node(null);
+  Node current = root; // This is the current node in our EXPLORATION
+  Node currentTarget = root; // This is the node the valuation computed by the constraint solver SHOULD reach
   
-  private final AnalysisConfig anaConf;
+  final AnalysisConfig anaConf;
+
+  ArrayList<Integer> expectedPath = new ArrayList<>();
+  boolean diverged = false;
+  final SolverContext solverCtx;
+  boolean explore;
   
-  private ArrayList<Integer> expectedPath = new ArrayList<>();
-  private boolean diverged = false;
-  private final SolverContext solverCtx;
-  private boolean explore;
+  final ConcolicValues preset;
+  boolean replay = false;
   
-  private final ConcolicValues preset;
-  private boolean replay = false;
-  
-  private Valuation prev = null;  
+  Valuation prev = null;
  
   
   public InternalConstraintsTree(SolverContext solverCtx, AnalysisConfig anaConf) {
