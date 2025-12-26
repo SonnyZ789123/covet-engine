@@ -22,6 +22,8 @@ import gov.nasa.jpf.constraints.solvers.ConstraintSolverFactory;
 import gov.nasa.jpf.constraints.types.TypeContext;
 import gov.nasa.jpf.jdart.ConcolicPerturbator;
 import gov.nasa.jpf.jdart.ConcolicUtil;
+import gov.nasa.jpf.jdart.constraints.DFSExplorationStrategy;
+import gov.nasa.jpf.jdart.constraints.ExplorationStrategy;
 import gov.nasa.jpf.jdart.termination.NeverTerminate;
 import gov.nasa.jpf.jdart.termination.TerminationStrategy;
 
@@ -63,6 +65,11 @@ public class ConcolicConfig {
    * strategy for terminating jdart
    */
   private TerminationStrategy termination;
+
+  /**
+   * strategy for exploring the symbolic execution tree
+   */
+  private ExplorationStrategy explorationStrategy;
   
   /**
    * 
@@ -86,6 +93,7 @@ public class ConcolicConfig {
     this.solver = other.solver;
     this.concolicMethods.putAll(other.concolicMethods);
     this.termination = other.termination;
+    this.explorationStrategy = other.explorationStrategy;
   }
 
   /**
@@ -119,6 +127,10 @@ public class ConcolicConfig {
   
   public TerminationStrategy getTerminationStrategy() {
     return this.termination;
+  }
+
+  public ExplorationStrategy getExplorationStrategy() {
+      return this.explorationStrategy;
   }
   
   public Config generateJPFConfig() {
@@ -220,6 +232,9 @@ public class ConcolicConfig {
     
     // parse termination
     this.termination = parseTerminationStrategy(conf);
+
+    // parse explorer
+    this.explorationStrategy = parseExplorationStrategy(conf);
   }
   
   public static TerminationStrategy parseTerminationStrategy(Config conf) {
@@ -257,7 +272,13 @@ public class ConcolicConfig {
     }
     return new NeverTerminate();
   }
-  
+
+  public static ExplorationStrategy parseExplorationStrategy(Config conf) {
+    if (!conf.hasValue("jdart.exploration.strategy.class")) {
+      return new DFSExplorationStrategy();
+    }
+    return conf.getEssentialInstance("jdart.exploration.strategy.class", ExplorationStrategy.class);
+  }
   
   
   // LEGACY API
