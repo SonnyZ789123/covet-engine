@@ -110,7 +110,7 @@ public class InternalConstraintsTree {
 		  if(!dd.hasChild(branchIdx)) {
 			  break;
 		  }
-		  curr = dd.getAndCreateChild(branchIdx);
+		  curr = dd.getOrCreateChild(branchIdx);
 	  }
 	  
 	  return curr;
@@ -197,7 +197,7 @@ public class InternalConstraintsTree {
     }
     
     int depth = current.getDepth();
-    current = data.getAndCreateChild(branchIdx);
+    current = data.getOrCreateChild(branchIdx);
     
     if(current.isExhausted() && !replay) { // FALK: check how exhaustion is computed, maybe replay check is not necessary
       diverged = true;
