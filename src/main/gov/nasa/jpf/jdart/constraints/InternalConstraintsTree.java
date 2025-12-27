@@ -156,6 +156,47 @@ public class InternalConstraintsTree {
     return BranchEffect.NORMAL;
   }
 
+  public void backtrackToFirstOpenNode(boolean popPathConditions) {
+    current = backtrack(current, popPathConditions);
+  }
+
+  public Node backtrack(Node node, boolean popPathConditions) {
+    if (node == null)
+      return null;
+
+    Node currentNode = node;
+    while (!currentNode.isOpen()) {
+      boolean exh = currentNode.isExhausted();
+      currentNode = currentNode.getParent();
+
+      if (currentNode == null) {
+        debugLogger.finest("[backtrack] reached root parent -> stop");
+        break;
+      }
+
+      if (popPathConditions) {
+        solverCtx.pop();
+        int removed = expectedPath.remove(expectedPath.size() - 1);
+        debugLogger.finest(
+            "[backtrack] pop -> removed branch " + removed +
+                ", new expectedPath=" + expectedPath);
+      }
+
+      DecisionData dec = currentNode.decisionData();
+      if (dec != null) {
+        dec.decrementOpen();
+
+        if (exh) {
+          dec.decrementUnexhausted();
+          debugLogger.finest("[backtrack] exhausted child -> decrement unexhausted");
+        }
+      }
+    }
+
+    debugLogger.finest("[backtrack] new expectedPath=" + expectedPath);
+    return currentNode;
+  }
+
   public Valuation getPresetValues() {
     // ----- PRESET FALLBACK -----
     //We fall back on the preset values that might be specified in the

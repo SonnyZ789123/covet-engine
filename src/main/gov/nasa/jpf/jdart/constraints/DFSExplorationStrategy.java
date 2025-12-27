@@ -15,42 +15,6 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
 
     private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
 
-    private Node backtrack(InternalConstraintsTree ctx, Node node, boolean pop) {
-        if(node == null)
-            return null;
-
-        while(!node.isOpen()) {
-            boolean exh = node.isExhausted();
-            node = node.getParent();
-
-            if (node == null) {
-                debugLogger.finest("[backtrack] reached root parent -> stop");
-                break;
-            }
-
-            if(pop) {
-                ctx.solverCtx.pop();
-                int removed = ctx.expectedPath.remove(ctx.expectedPath.size() - 1);
-                debugLogger.finest(
-                        "[backtrack] pop -> removed branch " + removed +
-                                ", new expectedPath=" + ctx.expectedPath);
-            }
-
-            DecisionData dec = node.decisionData();
-            if (dec != null) {
-                dec.decrementOpen();
-
-                if (exh) {
-                    dec.decrementUnexhausted();
-                    debugLogger.finest("[backtrack] exhausted child -> decrement unexhausted");
-                }
-            }
-        }
-
-        debugLogger.finest("[backtrack] new expectedPath=" + ctx.expectedPath);
-        return node;
-    }
-
     @Override
     public Valuation findNext(InternalConstraintsTree ctx) {
         ctx.replay = false;
@@ -58,13 +22,13 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
 
         if (ctx.diverged) {
             debugLogger.finest("[findNext] divergence detected -> backtrack without pop");
-            backtrack(ctx, ctx.current, false);
+            ctx.backtrackToFirstOpenNode(false);
             ctx.diverged = false;
         }
 
         ctx.current = ctx.root;
 
-        while ((ctx.currentTarget = backtrack(ctx, ctx.currentTarget, true)) != null) {
+        while ((ctx.currentTarget = ctx.backtrack(ctx.currentTarget, true)) != null) {
 
             DecisionData dec = ctx.currentTarget.decisionData();
 
