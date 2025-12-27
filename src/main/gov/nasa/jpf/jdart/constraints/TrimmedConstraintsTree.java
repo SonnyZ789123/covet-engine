@@ -20,6 +20,9 @@ import gov.nasa.jpf.constraints.api.Expression;
 import gov.nasa.jpf.constraints.expressions.LogicalOperator;
 import gov.nasa.jpf.constraints.expressions.PropositionalCompound;
 import gov.nasa.jpf.constraints.util.ExpressionUtil;
+import gov.nasa.jpf.jdart.constraints.tree.DecisionData;
+import gov.nasa.jpf.jdart.constraints.tree.Node;
+import gov.nasa.jpf.jdart.constraints.tree.ResultData;
 import gov.nasa.jpf.util.JPFLogger;
 import gov.nasa.jpf.util.Pair;
 import java.util.ArrayList;
@@ -160,6 +163,108 @@ public class TrimmedConstraintsTree {
   
   public TrimmedConstraintsTree() {
     // TODO Auto-generated constructor stub
+  }
+
+  public static TrimmedConstraintsTree.Node trim(gov.nasa.jpf.jdart.constraints.tree.Node root) {
+    LinkedList<Pair<Integer,TrimmedConstraintsTree.Node[]>> stack = new LinkedList<>();
+    gov.nasa.jpf.jdart.constraints.tree.Node curr = root;
+    gov.nasa.jpf.jdart.constraints.tree.Node prev = null;
+    TrimmedConstraintsTree.Node done = null;
+
+    while (curr != null) {
+      // moving down
+      if (prev == null || prev == curr.getParent()) {
+        // moving further down
+        DecisionData d = curr.decisionData();
+        if (d != null) {
+          int cCount = d.getChildren().length;
+          assert cCount > 0;
+
+          int idx = 0;
+          TrimmedConstraintsTree.Node[] arr = new TrimmedConstraintsTree.Node[cCount];
+          for (int i=0; i<cCount; i++) {
+            if (d.hasChild(i)) {
+              break;
+            }
+            arr[idx++] = null;
+          }
+
+          // moving back up
+          if (idx == cCount) {
+            done = generateTrimmedNode(d, arr);
+            gov.nasa.jpf.jdart.constraints.tree.Node tmp = curr; curr = prev; prev = tmp;
+            continue;
+          }
+
+          // moving further down
+          Pair<Integer, TrimmedConstraintsTree.Node[]> p = new Pair<>(idx, arr);
+          stack.push(p);
+          prev = curr; curr = d.getChild(idx);
+          continue;
+        }
+
+        // moving back up
+        if (!curr.hasData() || curr.dataIsUnsatisfiableData()) {
+          done = null;
+        }
+        else if (curr.dataIsResultData()) {
+          ResultData resultData = (ResultData) curr.getData();
+          done = new TrimmedConstraintsTree.ResultNode(resultData.getResult());
+        }
+        else if (curr.dataIsDontKnowData()) {
+          done = TrimmedConstraintsTree.DONT_KNOW_NODE;
+        }
+        gov.nasa.jpf.jdart.constraints.tree.Node tmp = curr; curr = prev; prev = tmp;
+      }
+      // moving up
+      else {
+        Pair<Integer, TrimmedConstraintsTree.Node[]> p = stack.pop();
+        DecisionData data = (DecisionData) curr.getData();
+        p._2[p._1] = done;
+
+        int idx = p._1;
+        while (++idx < p._2.length) {
+          if (data.hasChild(idx)) {
+            break;
+          }
+        }
+
+        // moving further up
+        if (idx == p._2.length) {
+          done = generateTrimmedNode(data, p._2);
+          prev = curr; curr = curr.getParent();
+          continue;
+        }
+        // moving down again
+        p = new Pair(idx, p._2);
+        stack.push(p);
+        prev = curr; curr = data.getChild(idx);
+      }
+    }
+    return done;
+  }
+
+  private static TrimmedConstraintsTree.Node generateTrimmedNode(DecisionData d, TrimmedConstraintsTree.Node[] arr) {
+    List<TrimmedConstraintsTree.Node> tchildren = new ArrayList<>();
+    List<Expression<Boolean>> tconstraints = new ArrayList<>();
+    boolean allDontKnow = true;
+    for(int i = 0; i < arr.length; i++) {
+      TrimmedConstraintsTree.Node tc = arr[i];
+      if(tc == null)
+        continue;
+      tchildren.add(tc);
+      tconstraints.add(d.getConstraint(i));
+      if(tc != TrimmedConstraintsTree.DONT_KNOW_NODE)
+        allDontKnow = false;
+    }
+
+    if(tchildren.isEmpty())
+      return null;
+    if(tchildren.size() == 1)
+      return tchildren.iterator().next();
+    if(allDontKnow)
+      return TrimmedConstraintsTree.DONT_KNOW_NODE;
+    return new TrimmedConstraintsTree.InnerNode(tchildren, tconstraints);
   }
 
 }

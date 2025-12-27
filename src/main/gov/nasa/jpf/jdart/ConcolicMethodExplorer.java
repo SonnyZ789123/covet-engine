@@ -410,7 +410,7 @@ public class ConcolicMethodExplorer {
   }
   
   public CompletedAnalysis finish() {
-    return new CompletedAnalysis(methodConfig, initValuation, initParams, constraintsTree.toFinalCTree());
+    return new CompletedAnalysis(methodConfig, initValuation, initParams, ConstraintsTree.fromInternalCT(constraintsTree.getRoot()));
   }
 
   public void newPath(StackFrame sf) {
@@ -464,7 +464,7 @@ public class ConcolicMethodExplorer {
   
   @Deprecated
   public ConstraintsTree getConstraintsTree() {
-    return constraintsTree.toFinalCTree();
+    return ConstraintsTree.fromInternalCT(constraintsTree.getRoot());
   }
   
   @Deprecated
