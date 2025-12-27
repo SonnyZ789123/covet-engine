@@ -49,7 +49,6 @@ public class InternalConstraintsTree {
   boolean replay = false;
   
   Valuation prev = null;
- 
   
   public InternalConstraintsTree(SolverContext solverCtx, AnalysisConfig anaConf) {
     this(solverCtx, anaConf, null);   
@@ -62,18 +61,6 @@ public class InternalConstraintsTree {
     this.preset = preset;
   }
 
-  public Node getRoot() {
-    return root;
-  }
-
-  public void setExplore(boolean explore) {
-    this.explore = explore;
-  }
-  
-  public boolean needsDecision() {
-    return !current.hasDecisionData();
-  }
-  
   /**
    * Retrieves the node in the constraints tree that would be reached using
    * the given valuation.
@@ -168,17 +155,29 @@ public class InternalConstraintsTree {
     
     return BranchEffect.NORMAL;
   }
-  
+
+  public Node getRoot() {
+    return root;
+  }
+
+  public void setExplore(boolean explore) {
+    this.explore = explore;
+  }
+
   public void finish(PathResult result) {
     current.result(result);
   }
-  
+
   public void failCurrentTarget() {
     currentTarget.dontKnow();
   }
 
-
   public boolean isExplore() {
     return explore;
   }
+
+  public boolean needsDecision() {
+    return !current.hasDecisionData();
+  }
+
 }
