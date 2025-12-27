@@ -84,10 +84,10 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
             // ----- DECISION NODE -----
             else {
                 int nextIdx = dec.nextOpenChild();
-                assert nextIdx != -1;
+                assert nextIdx != -1; // because of backtrack condition
 
                 Expression<Boolean> constraint = dec.getConstraint(nextIdx);
-                targetNode = dec.getAndCreateChild(nextIdx);
+                targetNode = dec.getOrCreateChild(nextIdx);
 
                 ctx.solverCtx.push();
                 ctx.expectedPath.add(nextIdx);
