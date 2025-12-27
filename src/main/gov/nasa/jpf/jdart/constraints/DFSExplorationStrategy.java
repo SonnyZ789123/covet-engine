@@ -21,23 +21,16 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
 
         ctx.findNextInit();
 
-        while ((ctx.currentTarget = ctx.backtrack(ctx.currentTarget, true)) != null) {
+        Node targetNode = ctx.currentTarget;
+        while ((targetNode = ctx.backtrack(targetNode, true)) != null) {
 
-            DecisionData dec = ctx.currentTarget.decisionData();
+            DecisionData dec = targetNode.decisionData();
 
             // ----- LEAF / VIRGIN NODE -----
             if (dec == null) {
-                assert ctx.currentTarget.isVirgin();
+                assert targetNode.isVirgin();
 
-                int ad = ctx.currentTarget.incAltDepth();
-                if (ctx.anaConf.maxAltDepthExceeded(ad) || ctx.anaConf.maxDepthExceeded(ctx.currentTarget.getDepth())) {
-                    debugLogger.finest(
-                            "[findNext] depth limit exceeded -> dontKnow, depth=" +
-                                    ctx.currentTarget.getDepth() + ", altDepth=" + ad
-                    );
-                    ctx.currentTarget.markDontKnowNode();
-                    continue;
-                }
+                ctx.checkDepthLimit(targetNode);
 
                 Valuation val = new Valuation();
                 logger.finer("Finding new valuation");
@@ -51,31 +44,31 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
                 if (val.equals(ctx.prev)) {
                     debugLogger.finest("[findNext] duplicate valuation -> skip");
                     logger.finer("Wont re-execute with known valuation");
-                    ctx.currentTarget.markDontKnowNode();
+                    targetNode.markDontKnowNode();
                     break;
                 }
 
                 switch (res) {
                     case UNSAT:
-                        ctx.currentTarget.markUnsatisfiableNode();
+                        targetNode.markUnsatisfiableNode();
                         debugLogger.finest("[findNext] solve -> UNSAT");
                         break;
 
                     case DONT_KNOW:
-                        ctx.currentTarget.markDontKnowNode();
+                        targetNode.markDontKnowNode();
                         debugLogger.finest("[findNext] solve -> DONT_KNOW");
                         break;
 
                     case SAT:
                         Node predictedTarget = ctx.simulate(val);
-                        if (predictedTarget != null && predictedTarget != ctx.currentTarget) {
+                        if (predictedTarget != null && predictedTarget != targetNode) {
                             boolean inconclusive = predictedTarget.isExhausted();
                             logger.info("Predicted ", inconclusive ? "inconclusive " : "", "divergence");
                             debugLogger.finest("[findNext] predicted divergence -> exhausted=" + inconclusive);
                             if (inconclusive) {
                                 debugLogger.finest("[findNext] predicted divergence -> DONT_KNOW");
                                 logger.finer("NOT attempting execution");
-                                ctx.currentTarget.markDontKnowNode();
+                                targetNode.markDontKnowNode();
                                 break;
                             }
                         }
@@ -83,6 +76,7 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
                         ctx.prev = val;
                         debugLogger.finest("[findNext] SAT -> returning valuation " + val +
                                 " , expectedPath=" + ctx.expectedPath);
+
                         return ExpressionUtil.combineValuations(val);
                 }
             }
@@ -93,7 +87,7 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
                 assert nextIdx != -1;
 
                 Expression<Boolean> constraint = dec.getConstraint(nextIdx);
-                ctx.currentTarget = dec.getAndCreateChild(nextIdx);
+                targetNode = dec.getAndCreateChild(nextIdx);
 
                 ctx.solverCtx.push();
                 ctx.expectedPath.add(nextIdx);
@@ -115,6 +109,7 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
         }
 
         debugLogger.finest("[findNext] fallback to preset valuation");
+
         return ctx.getPresetValues();
     }
 }

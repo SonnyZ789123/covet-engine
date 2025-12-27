@@ -39,7 +39,9 @@ public class InternalConstraintsTree {
   Node current = root;
   /**
    * This is the node that the concrete execution should reach by
-   * the valuation computed by the constraint solver
+   * the valuation computed by the constraint solver.
+   * This should only be set by the decision(...) method, which is invoked during
+   * concrete execution when a symbolic branch is encountered.
    */
   Node currentTarget = root; // This is the node the valuation computed by the constraint solver SHOULD reach
   
@@ -225,7 +227,8 @@ public class InternalConstraintsTree {
         }
        
         expectedPath.add(branchIdx);
-        currentTarget = current;
+        // Set current target to later be used for finding next node to explore
+        setCurrentTarget(current);
       }
     }
     
@@ -244,6 +247,19 @@ public class InternalConstraintsTree {
       backtrackToFirstOpenNode(false);
       diverged = false;
     }
+  }
+
+  public boolean checkDepthLimit(Node node) {
+    int ad = node.incAltDepth();
+    if (anaConf.maxAltDepthExceeded(ad) || anaConf.maxDepthExceeded(node.getDepth())) {
+      debugLogger.finest(
+          "[checkDepthLimit] depth limit exceeded -> dontKnow, depth=" +
+              node.getDepth() + ", altDepth=" + ad
+      );
+      node.markDontKnowNode();
+      return true;
+    }
+    return false;
   }
 
   public void backtrackToFirstOpenNode(boolean popPathConditions) {
@@ -294,7 +310,6 @@ public class InternalConstraintsTree {
     //node from exercising the constraints tree
     if (preset != null && preset.hasNext()) {
       current = root;
-      currentTarget = root;
       assert expectedPath.isEmpty();
       replay = true;
 
@@ -302,6 +317,10 @@ public class InternalConstraintsTree {
     }
 
     return null;
+  }
+
+  private void setCurrentTarget(Node target) {
+    this.currentTarget = target;
   }
 
   public Node getRoot() {
