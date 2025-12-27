@@ -313,11 +313,11 @@ public class InternalConstraintsTree {
   }
 
   public void finish(PathResult result) {
-    current.result(result);
+    current.markResultNode(result);
   }
 
   public void failCurrentTarget() {
-    currentTarget.dontKnow();
+    currentTarget.markDontKnowNode();
   }
 
   public boolean isExplore() {

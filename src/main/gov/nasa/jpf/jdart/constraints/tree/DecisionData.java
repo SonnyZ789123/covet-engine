@@ -22,7 +22,7 @@ public final class DecisionData extends NodeData {
         if(!explore) {
             for(int i = 0; i < constraints.length; i++) {
                 this.children[i] = new Node(node);
-                this.children[i].dontKnow();
+                this.children[i].markDontKnowNode();
             }
             this.numOpen = 0;
         }

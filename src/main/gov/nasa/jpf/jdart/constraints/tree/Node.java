@@ -82,7 +82,7 @@ public final class Node {
     }
 
     public boolean hasDecisionData() {
-        if(data == null || data.getClass() == DontKnowData.class)
+        if (data == null || data.getClass() == DontKnowData.class)
             return false;
 
         //if(data.getClass() == DecisionData.class)
@@ -104,40 +104,30 @@ public final class Node {
         return dec;
     }
 
-    public ResultData result(PathResult result) {
+    public void markResultNode(PathResult result) {
         if(data == null || data.getClass() == DontKnowData.class) {
-            ResultData res = new ResultData(result);
-            data = res;
-            return res;
+            data = new ResultData(result);
         }
 
         //throw new IllegalStateException("Attempting to finish already explored path (data = " + data.getClass().getName() + "!");
-        return null;
     }
 
-    public DontKnowData dontKnow() {
+    public void markDontKnowNode() {
         if(data == null) {
-            DontKnowData dk = DontKnowData.getInstance();
-            data = dk;
-            return dk;
+            data = DontKnowData.getInstance();
         }
 
-        if(data.getClass() != DontKnowData.class) {
-            //System.err.println("Attempting to fail already explored path!");
-            return null;
-        }
-        return (DontKnowData)data;
+//        if(data.getClass() != DontKnowData.class) {
+//            System.err.println("Attempting to fail already explored path!");
+//        }
     }
 
-    public UnsatisfiableData unsatisfiable() {
+    public void markUnsatisfiableNode() {
         if(data == null) {
-            UnsatisfiableData dk = UnsatisfiableData.getInstance();
-            data = dk;
-            return dk;
+            data = UnsatisfiableData.getInstance();
         }
 
         //throw new IllegalStateException("Attempting to fail already explored path!");
-        return null;
     }
 
 }

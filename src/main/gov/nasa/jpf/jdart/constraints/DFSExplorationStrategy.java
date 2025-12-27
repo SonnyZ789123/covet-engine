@@ -35,7 +35,7 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
                             "[findNext] depth limit exceeded -> dontKnow, depth=" +
                                     ctx.currentTarget.getDepth() + ", altDepth=" + ad
                     );
-                    ctx.currentTarget.dontKnow();
+                    ctx.currentTarget.markDontKnowNode();
                     continue;
                 }
 
@@ -51,18 +51,18 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
                 if (val.equals(ctx.prev)) {
                     debugLogger.finest("[findNext] duplicate valuation -> skip");
                     logger.finer("Wont re-execute with known valuation");
-                    ctx.currentTarget.dontKnow();
+                    ctx.currentTarget.markDontKnowNode();
                     break;
                 }
 
                 switch (res) {
                     case UNSAT:
-                        ctx.currentTarget.unsatisfiable();
+                        ctx.currentTarget.markUnsatisfiableNode();
                         debugLogger.finest("[findNext] solve -> UNSAT");
                         break;
 
                     case DONT_KNOW:
-                        ctx.currentTarget.dontKnow();
+                        ctx.currentTarget.markDontKnowNode();
                         debugLogger.finest("[findNext] solve -> DONT_KNOW");
                         break;
 
@@ -75,7 +75,7 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
                             if (inconclusive) {
                                 debugLogger.finest("[findNext] predicted divergence -> DONT_KNOW");
                                 logger.finer("NOT attempting execution");
-                                ctx.currentTarget.dontKnow();
+                                ctx.currentTarget.markDontKnowNode();
                                 break;
                             }
                         }
