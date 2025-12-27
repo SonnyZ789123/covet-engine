@@ -7,6 +7,7 @@ import gov.nasa.jpf.vm.Instruction;
 public final class Node {
     private final Node parent;
     private final int depth;
+    /** Alternative depth - how many times have we explored this node */
     private int altDepth;
 
     private NodeData data;
