@@ -30,7 +30,12 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
             if (dec == null) {
                 assert targetNode.isVirgin();
 
-                ctx.checkDepthLimit(targetNode);
+                if (ctx.checkDepthLimit(targetNode)) {
+                    debugLogger.finest(
+                        "[checkDepthLimit] depth or alternative depth limit exceeded"
+                    );
+                    targetNode.markDontKnowNode();
+                }
 
                 Valuation val = new Valuation();
                 logger.finer("Finding new valuation");
