@@ -1,7 +1,6 @@
 package gov.nasa.jpf.jdart.constraints;
 
 import gov.nasa.jpf.JPF;
-import gov.nasa.jpf.constraints.api.Expression;
 import gov.nasa.jpf.constraints.api.Valuation;
 import gov.nasa.jpf.jdart.constraints.tree.DecisionData;
 import gov.nasa.jpf.jdart.constraints.tree.Node;
@@ -15,20 +14,8 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
         int nextIdx = decisionData.nextOpenChild();
         assert nextIdx != -1; // because of backtrack condition should decisionData have at least one open child
 
-        Expression<Boolean> constraint = decisionData.getConstraint(nextIdx);
-        Node targetNode = decisionData.getOrCreateChild(nextIdx);
-
-        ctx.solverCtx.push();
-        ctx.solverCtx.add(constraint);
-        ctx.expectedPath.add(nextIdx);
-
-        debugLogger.finest(
-            "[findNext] decision node descend -> branch " + nextIdx +
-                ", constraint=" + constraint.toString() +
-                ", new expectedPath=" + ctx.expectedPath
-        );
-
-        return targetNode;
+        ctx.extendExpectedPath(decisionData, nextIdx);
+        return decisionData.getOrCreateChild(nextIdx);
     }
 
     @Override
@@ -44,7 +31,7 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
 
             // ----- LEAF / VIRGIN NODE -----
             if (decisionData == null) {
-                Valuation val = ctx.solvePathForVirginNode(targetNode);
+                Valuation val = ctx.solvePathOrMarkNode(targetNode);
 
                 if (val != null) {
                     return val;
