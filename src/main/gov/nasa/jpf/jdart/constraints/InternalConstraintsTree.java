@@ -176,7 +176,6 @@ public class InternalConstraintsTree {
    *   {@link BranchEffect#UNEXPECTED} if a replay deviates from the expected path,
    *   or {@link BranchEffect#INCONCLUSIVE} if execution enters an exhausted subtree
    */
-
   public BranchEffect decision(Instruction insn, int branchIdx, Expression<Boolean>[] decisions) {
     debugLogger.finest("[decision] entry -> insn=" + insn,
             ", branchIdx=" + branchIdx +
@@ -251,15 +250,7 @@ public class InternalConstraintsTree {
 
   public boolean checkDepthLimit(Node node) {
     int ad = node.incAltDepth();
-    if (anaConf.maxAltDepthExceeded(ad) || anaConf.maxDepthExceeded(node.getDepth())) {
-      debugLogger.finest(
-          "[checkDepthLimit] depth limit exceeded -> dontKnow, depth=" +
-              node.getDepth() + ", altDepth=" + ad
-      );
-      node.markDontKnowNode();
-      return true;
-    }
-    return false;
+    return anaConf.maxAltDepthExceeded(ad) || anaConf.maxDepthExceeded(node.getDepth());
   }
 
   public void backtrackToFirstOpenNode(boolean popPathConditions) {
