@@ -144,7 +144,7 @@ public class InternalConstraintsTree {
           solverCtx.add(constraint);
         }
         catch(RuntimeException ex) {
-          logger.finer(ex.getMessage()); 
+          logger.finer(ex.getMessage());
           //ex.printStackTrace();
         }
        
@@ -154,6 +154,23 @@ public class InternalConstraintsTree {
     }
     
     return BranchEffect.NORMAL;
+  }
+
+  public Valuation getPresetValues() {
+    // ----- PRESET FALLBACK -----
+    //We fall back on the preset values that might be specified in the
+    //jpf config -- this only happens when we cannot find a new target
+    //node from exercising the constraints tree
+    if (preset != null && preset.hasNext()) {
+      current = root;
+      currentTarget = root;
+      assert expectedPath.isEmpty();
+      replay = true;
+
+      return preset.next();
+    }
+
+    return null;
   }
 
   public Node getRoot() {

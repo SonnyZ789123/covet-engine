@@ -157,21 +157,7 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
             }
         }
 
-        // ----- PRESET FALLBACK -----
-        //We fall back on the preset values that might be specified in the
-        //jpf config -- this only happens when we cannot find a new target
-        //node from exercising the constraints tree
-        if (ctx.preset != null && ctx.preset.hasNext()) {
-            ctx.current = ctx.root;
-            ctx.currentTarget = ctx.root;
-            assert ctx.expectedPath.isEmpty();
-            ctx.replay = true;
-
-            debugLogger.finest("[findNext] fallback to preset valuation");
-            return ctx.preset.next();
-        }
-
-        debugLogger.finest("[findNext] no more valuations -> return null");
-        return null;
+        debugLogger.finest("[findNext] fallback to preset valuation");
+        return ctx.getPresetValues();
     }
 }
