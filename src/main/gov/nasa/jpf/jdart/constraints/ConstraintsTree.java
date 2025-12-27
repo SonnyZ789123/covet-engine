@@ -25,6 +25,7 @@ import gov.nasa.jpf.constraints.expressions.Negation;
 import gov.nasa.jpf.constraints.expressions.PropositionalCompound;
 import gov.nasa.jpf.constraints.util.ExpressionUtil;
 import gov.nasa.jpf.constraints.util.MixedParamsException;
+import gov.nasa.jpf.jdart.constraints.tree.Node;
 import gov.nasa.jpf.util.JPFLogger;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -36,6 +37,8 @@ import java.util.List;
 import java.util.Set;
 
 import com.google.common.base.Predicate;
+
+import static gov.nasa.jpf.jdart.constraints.TrimmedConstraintsTree.trim;
 
 /**
  * constraints tree implementation. 
@@ -209,6 +212,17 @@ public class ConstraintsTree {
  
   public ConstraintsTree(Node root) {
     this.root = root;
+  }
+
+  public static ConstraintsTree fromInternalCT(gov.nasa.jpf.jdart.constraints.tree.Node root) {
+    if (root == null) {
+      return null;
+    }
+    TrimmedConstraintsTree.Node r = trim(root);
+    if (r == null) {
+      return null;
+    }
+    return new ConstraintsTree(TrimmedConstraintsTree.toBinaryCTree(r));
   }
   
   public String toString(boolean values, boolean postconditions) {
