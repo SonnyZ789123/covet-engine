@@ -17,16 +17,9 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
 
     @Override
     public Valuation findNext(InternalConstraintsTree ctx) {
-        ctx.replay = false;
         debugLogger.finest("[findNext] entry -> expectedPath=" + ctx.expectedPath);
 
-        if (ctx.diverged) {
-            debugLogger.finest("[findNext] divergence detected -> backtrack without pop");
-            ctx.backtrackToFirstOpenNode(false);
-            ctx.diverged = false;
-        }
-
-        ctx.current = ctx.root;
+        ctx.findNextInit();
 
         while ((ctx.currentTarget = ctx.backtrack(ctx.currentTarget, true)) != null) {
 
@@ -55,6 +48,13 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
                 ConstraintSolver.Result res = ctx.solverCtx.solve(val);
                 logger.finer("Found: " + res + " : " + val);
 
+                if (val.equals(ctx.prev)) {
+                    debugLogger.finest("[findNext] duplicate valuation -> skip");
+                    logger.finer("Wont re-execute with known valuation");
+                    ctx.currentTarget.dontKnow();
+                    break;
+                }
+
                 switch (res) {
                     case UNSAT:
                         ctx.currentTarget.unsatisfiable();
@@ -78,13 +78,6 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
                                 ctx.currentTarget.dontKnow();
                                 break;
                             }
-                        }
-
-                        if (val.equals(ctx.prev)) {
-                            debugLogger.finest("[findNext] duplicate valuation -> skip");
-                            logger.finer("Wont re-execute with known valuation");
-                            ctx.currentTarget.dontKnow();
-                            break;
                         }
 
                         ctx.prev = val;
