@@ -31,7 +31,7 @@ import gov.nasa.jpf.jdart.config.ConcolicMethodConfig;
 import gov.nasa.jpf.jdart.config.ConcolicValues;
 import gov.nasa.jpf.jdart.config.ParamConfig;
 import gov.nasa.jpf.jdart.constraints.*;
-import gov.nasa.jpf.jdart.constraints.InternalConstraintsTree.BranchEffect;
+import gov.nasa.jpf.jdart.constraints.tree.BranchEffect;
 import gov.nasa.jpf.jdart.objects.SymbolicObjectsContext;
 import gov.nasa.jpf.util.JPFLogger;
 import gov.nasa.jpf.vm.ClassInfo;
