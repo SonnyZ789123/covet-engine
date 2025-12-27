@@ -216,18 +216,8 @@ public class InternalConstraintsTree {
           } 
       }
       else {
-        Expression<Boolean> constraint = data.getConstraint(branchIdx);
-        debugLogger.finest("[decision] insn=" + insn + ", adding constraint=" + constraint.toString());
-        solverCtx.push();
-        try {
-          solverCtx.add(constraint);
-        }
-        catch(RuntimeException ex) {
-          logger.finer(ex.getMessage());
-          //ex.printStackTrace();
-        }
-       
-        expectedPath.add(branchIdx);
+        debugLogger.finest("[decision] insn=" + insn + ", adding constraint");
+        extendExpectedPath(data, branchIdx);
         // Set current target to later be used for finding next node to explore
         setCurrentTarget(current);
       }
@@ -244,7 +234,7 @@ public class InternalConstraintsTree {
 
   public void handleDivergence() {
     if (diverged) {
-      debugLogger.finest("[findNext] divergence detected -> backtrack without pop");
+      debugLogger.finest("[handleDivergence] divergence detected -> backtrack without pop");
       current = backtrackToOpenNode(current, false);
       diverged = false;
     }
@@ -265,7 +255,7 @@ public class InternalConstraintsTree {
       currentNode = currentNode.getParent();
 
       if (currentNode == null) {
-        debugLogger.finest("[backtrack] reached root parent -> stop");
+        debugLogger.finest("[backtrackToOpenNode] reached root parent -> stop");
         break;
       }
 
@@ -273,7 +263,7 @@ public class InternalConstraintsTree {
         solverCtx.pop();
         int removed = expectedPath.remove(expectedPath.size() - 1);
         debugLogger.finest(
-            "[backtrack] pop -> removed branch " + removed +
+            "[backtrackToOpenNode] pop -> removed branch " + removed +
                 ", new expectedPath=" + expectedPath);
       }
 
@@ -283,13 +273,40 @@ public class InternalConstraintsTree {
 
         if (exh) {
           dec.decrementUnexhausted();
-          debugLogger.finest("[backtrack] exhausted child -> decrement unexhausted");
+          debugLogger.finest("[backtrackToOpenNode] exhausted child -> decrement unexhausted");
         }
       }
     }
 
-    debugLogger.finest("[backtrack] new expectedPath=" + expectedPath);
+    debugLogger.finest("[backtrackToOpenNode] new expectedPath=" + expectedPath);
     return currentNode;
+  }
+
+  public void extendExpectedPath(DecisionData decisionData, int branchIndex) {
+    Expression<Boolean> constraint = decisionData.getConstraint(branchIndex);
+
+    solverCtx.push();
+
+    try {
+      solverCtx.add(constraint);
+    } catch(RuntimeException ex) {
+      logger.finer(ex.getMessage());
+    }
+    expectedPath.add(branchIndex);
+
+    debugLogger.finest(
+        "[extendExpectedPath] decision node descend -> branch " + branchIndex +
+            ", constraint=" + constraint.toString() +
+            ", new expectedPath=" + expectedPath
+    );
+  }
+
+  public SolverContextSolveResult solveCurrentPath() {
+    logger.finer("Finding new valuation");
+    Valuation val = new Valuation();
+    ConstraintSolver.Result res = solverCtx.solve(val);
+    logger.finer("Found: " + res + " : " + val);
+    return new SolverContextSolveResult(val, res);
   }
 
   /**
@@ -299,35 +316,26 @@ public class InternalConstraintsTree {
    * @param node The virgin node to solve the path for
    * @return A new valuation for the path condition, or {@code null} if solving failed
    */
-  public Valuation solvePathForVirginNode(Node node) {
+  public Valuation solvePathOrMarkNode(Node node) {
     assert node.isVirgin();
 
     if (checkDepthLimit(node)) {
-      debugLogger.finest("[solvePathForVirginNode] depth or alternative depth limit exceeded");
+      debugLogger.finest("[solvePathOrMarkNode] depth or alternative depth limit exceeded");
       node.markDontKnowNode();
     }
 
-    logger.finer("Finding new valuation");
-    Valuation val = new Valuation();
-    ConstraintSolver.Result res = solverCtx.solve(val);
-    logger.finer("Found: " + res + " : " + val);
+    SolverContextSolveResult solveRes = solveCurrentPath();
+    Valuation val = solveRes.val;
 
-    if (val.equals(prev)) {
-      debugLogger.finest("[solvePathForVirginNode] duplicate valuation -> skip");
-      logger.finer("Wont re-execute with known valuation");
-      node.markDontKnowNode();
-      return null;
-    }
-
-    switch (res) {
+    switch (solveRes.result) {
       case UNSAT:
         node.markUnsatisfiableNode();
-        debugLogger.finest("[solvePathForVirginNode] solve -> UNSAT");
+        debugLogger.finest("[solvePathOrMarkNode] solve -> UNSAT");
         break;
 
       case DONT_KNOW:
         node.markDontKnowNode();
-        debugLogger.finest("[solvePathForVirginNode] solve -> DONT_KNOW");
+        debugLogger.finest("[solvePathOrMarkNode] solve -> DONT_KNOW");
         break;
 
       case SAT:
@@ -343,7 +351,7 @@ public class InternalConstraintsTree {
         }
 
         prev = val;
-        debugLogger.finest("[solvePathForVirginNode] SAT -> returning valuation " + val +
+        debugLogger.finest("[solvePathOrMarkNode] SAT -> returning valuation " + val +
             " , expectedPath=" + expectedPath);
 
         return ExpressionUtil.combineValuations(val);
