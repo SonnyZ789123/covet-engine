@@ -1,19 +1,35 @@
 package gov.nasa.jpf.jdart.constraints;
 
 import gov.nasa.jpf.JPF;
-import gov.nasa.jpf.constraints.api.ConstraintSolver;
 import gov.nasa.jpf.constraints.api.Expression;
 import gov.nasa.jpf.constraints.api.Valuation;
-import gov.nasa.jpf.constraints.util.ExpressionUtil;
 import gov.nasa.jpf.jdart.constraints.tree.DecisionData;
 import gov.nasa.jpf.jdart.constraints.tree.Node;
 import gov.nasa.jpf.util.JPFLogger;
 
 public class DFSExplorationStrategy implements ExplorationStrategy {
 
-    private final JPFLogger logger = JPF.getLogger("jdart");
-
     private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
+
+    private Node descendDecisionNode(InternalConstraintsTree ctx, DecisionData decisionData) {
+        int nextIdx = decisionData.nextOpenChild();
+        assert nextIdx != -1; // because of backtrack condition should decisionData have at least one open child
+
+        Expression<Boolean> constraint = decisionData.getConstraint(nextIdx);
+        Node targetNode = decisionData.getOrCreateChild(nextIdx);
+
+        ctx.solverCtx.push();
+        ctx.solverCtx.add(constraint);
+        ctx.expectedPath.add(nextIdx);
+
+        debugLogger.finest(
+            "[findNext] decision node descend -> branch " + nextIdx +
+                ", constraint=" + constraint.toString() +
+                ", new expectedPath=" + ctx.expectedPath
+        );
+
+        return targetNode;
+    }
 
     @Override
     public Valuation findNext(InternalConstraintsTree ctx) {
@@ -24,92 +40,20 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
         Node targetNode = ctx.currentTarget;
         while ((targetNode = ctx.backtrackToOpenNode(targetNode, true)) != null) {
 
-            DecisionData dec = targetNode.decisionData();
+            DecisionData decisionData = targetNode.decisionData();
 
             // ----- LEAF / VIRGIN NODE -----
-            if (dec == null) {
-                assert targetNode.isVirgin();
+            if (decisionData == null) {
+                Valuation val = ctx.solvePathForVirginNode(targetNode);
 
-                if (ctx.checkDepthLimit(targetNode)) {
-                    debugLogger.finest(
-                        "[checkDepthLimit] depth or alternative depth limit exceeded"
-                    );
-                    targetNode.markDontKnowNode();
-                }
-
-                Valuation val = new Valuation();
-                logger.finer("Finding new valuation");
-                debugLogger.finest(
-                        "[findNext] solve for " + val +
-                                ", expectedPath=" + ctx.expectedPath
-                );
-                ConstraintSolver.Result res = ctx.solverCtx.solve(val);
-                logger.finer("Found: " + res + " : " + val);
-
-                if (val.equals(ctx.prev)) {
-                    debugLogger.finest("[findNext] duplicate valuation -> skip");
-                    logger.finer("Wont re-execute with known valuation");
-                    targetNode.markDontKnowNode();
-                    break;
-                }
-
-                switch (res) {
-                    case UNSAT:
-                        targetNode.markUnsatisfiableNode();
-                        debugLogger.finest("[findNext] solve -> UNSAT");
-                        break;
-
-                    case DONT_KNOW:
-                        targetNode.markDontKnowNode();
-                        debugLogger.finest("[findNext] solve -> DONT_KNOW");
-                        break;
-
-                    case SAT:
-                        Node predictedTarget = ctx.simulate(val);
-                        if (predictedTarget != null && predictedTarget != targetNode) {
-                            boolean inconclusive = predictedTarget.isExhausted();
-                            logger.info("Predicted ", inconclusive ? "inconclusive " : "", "divergence");
-                            debugLogger.finest("[findNext] predicted divergence -> exhausted=" + inconclusive);
-                            if (inconclusive) {
-                                debugLogger.finest("[findNext] predicted divergence -> DONT_KNOW");
-                                logger.finer("NOT attempting execution");
-                                targetNode.markDontKnowNode();
-                                break;
-                            }
-                        }
-
-                        ctx.prev = val;
-                        debugLogger.finest("[findNext] SAT -> returning valuation " + val +
-                                " , expectedPath=" + ctx.expectedPath);
-
-                        return ExpressionUtil.combineValuations(val);
+                if (val != null) {
+                    return val;
                 }
             }
 
             // ----- DECISION NODE -----
             else {
-                int nextIdx = dec.nextOpenChild();
-                assert nextIdx != -1; // because of backtrack condition
-
-                Expression<Boolean> constraint = dec.getConstraint(nextIdx);
-                targetNode = dec.getOrCreateChild(nextIdx);
-
-                ctx.solverCtx.push();
-                ctx.expectedPath.add(nextIdx);
-
-                debugLogger.finest(
-                        "[findNext] decision node descend -> branch " + nextIdx +
-                                ", constraint=" + constraint.toString() +
-                                ", new expectedPath=" + ctx.expectedPath
-                );
-
-                try {
-                    ctx.solverCtx.add(constraint);
-                } catch(Exception ex) {
-                    logger.finer(ex.getMessage());
-                    // ex.printStackTrace();
-                    //currentTarget.dontKnow(); // TODO good idea?
-                }
+                targetNode = descendDecisionNode(ctx, decisionData);
             }
         }
 

@@ -16,9 +16,11 @@
 package gov.nasa.jpf.jdart.constraints;
 
 import gov.nasa.jpf.JPF;
+import gov.nasa.jpf.constraints.api.ConstraintSolver;
 import gov.nasa.jpf.constraints.api.Expression;
 import gov.nasa.jpf.constraints.api.SolverContext;
 import gov.nasa.jpf.constraints.api.Valuation;
+import gov.nasa.jpf.constraints.util.ExpressionUtil;
 import gov.nasa.jpf.jdart.config.AnalysisConfig;
 import gov.nasa.jpf.jdart.config.ConcolicValues;
 import gov.nasa.jpf.jdart.constraints.tree.*;
@@ -288,6 +290,65 @@ public class InternalConstraintsTree {
 
     debugLogger.finest("[backtrack] new expectedPath=" + expectedPath);
     return currentNode;
+  }
+
+  /**
+   * Solves the path condition leading to the given virgin node.
+   * This will potentially mark the given node when solving fails.
+   *
+   * @param node The virgin node to solve the path for
+   * @return A new valuation for the path condition, or {@code null} if solving failed
+   */
+  public Valuation solvePathForVirginNode(Node node) {
+    assert node.isVirgin();
+
+    if (checkDepthLimit(node)) {
+      debugLogger.finest("[solvePathForVirginNode] depth or alternative depth limit exceeded");
+      node.markDontKnowNode();
+    }
+
+    logger.finer("Finding new valuation");
+    Valuation val = new Valuation();
+    ConstraintSolver.Result res = solverCtx.solve(val);
+    logger.finer("Found: " + res + " : " + val);
+
+    if (val.equals(prev)) {
+      debugLogger.finest("[solvePathForVirginNode] duplicate valuation -> skip");
+      logger.finer("Wont re-execute with known valuation");
+      node.markDontKnowNode();
+      return null;
+    }
+
+    switch (res) {
+      case UNSAT:
+        node.markUnsatisfiableNode();
+        debugLogger.finest("[solvePathForVirginNode] solve -> UNSAT");
+        break;
+
+      case DONT_KNOW:
+        node.markDontKnowNode();
+        debugLogger.finest("[solvePathForVirginNode] solve -> DONT_KNOW");
+        break;
+
+      case SAT:
+        Node predictedTarget = simulate(val);
+        if (predictedTarget != null && predictedTarget != node) {
+          boolean inconclusive = predictedTarget.isExhausted();
+          logger.info("Predicted ", inconclusive ? "inconclusive " : "", "divergence");
+          if (inconclusive) {
+            logger.finer("inconclusive -> NOT attempting execution");
+            node.markDontKnowNode();
+            break;
+          }
+        }
+
+        prev = val;
+        debugLogger.finest("[solvePathForVirginNode] SAT -> returning valuation " + val +
+            " , expectedPath=" + expectedPath);
+
+        return ExpressionUtil.combineValuations(val);
+    }
+    return null;
   }
 
   public Valuation getPresetValues() {
