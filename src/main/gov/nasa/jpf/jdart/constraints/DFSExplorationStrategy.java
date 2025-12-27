@@ -5,6 +5,8 @@ import gov.nasa.jpf.constraints.api.ConstraintSolver;
 import gov.nasa.jpf.constraints.api.Expression;
 import gov.nasa.jpf.constraints.api.Valuation;
 import gov.nasa.jpf.constraints.util.ExpressionUtil;
+import gov.nasa.jpf.jdart.constraints.tree.DecisionData;
+import gov.nasa.jpf.jdart.constraints.tree.Node;
 import gov.nasa.jpf.util.JPFLogger;
 
 public class DFSExplorationStrategy implements ExplorationStrategy {
@@ -13,10 +15,7 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
 
     private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
 
-    private InternalConstraintsTree.Node backtrack(
-            InternalConstraintsTree ctx,
-            InternalConstraintsTree.Node node,
-            boolean pop) {
+    private Node backtrack(InternalConstraintsTree ctx, Node node, boolean pop) {
         if(node == null)
             return null;
 
@@ -37,12 +36,14 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
                                 ", new expectedPath=" + ctx.expectedPath);
             }
 
-            InternalConstraintsTree.DecisionData dec = node.decisionData();
-            dec.decrementOpen();
+            DecisionData dec = node.decisionData();
+            if (dec != null) {
+                dec.decrementOpen();
 
-            if (exh) {
-                dec.decrementUnexhausted();
-                debugLogger.finest("[backtrack] exhausted child -> decrement unexhausted");
+                if (exh) {
+                    dec.decrementUnexhausted();
+                    debugLogger.finest("[backtrack] exhausted child -> decrement unexhausted");
+                }
             }
         }
 
@@ -65,7 +66,7 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
 
         while ((ctx.currentTarget = backtrack(ctx, ctx.currentTarget, true)) != null) {
 
-            InternalConstraintsTree.DecisionData dec = ctx.currentTarget.decisionData();
+            DecisionData dec = ctx.currentTarget.decisionData();
 
             // ----- LEAF / VIRGIN NODE -----
             if (dec == null) {
@@ -102,7 +103,7 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
                         break;
 
                     case SAT:
-                        InternalConstraintsTree.Node predictedTarget = ctx.simulate(val);
+                        Node predictedTarget = ctx.simulate(val);
                         if (predictedTarget != null && predictedTarget != ctx.currentTarget) {
                             boolean inconclusive = predictedTarget.isExhausted();
                             logger.info("Predicted ", inconclusive ? "inconclusive " : "", "divergence");
@@ -135,8 +136,7 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
                 assert nextIdx != -1;
 
                 Expression<Boolean> constraint = dec.getConstraint(nextIdx);
-                InternalConstraintsTree.Node c = dec.getChild(nextIdx);
-                ctx.currentTarget = c;
+                ctx.currentTarget = dec.getAndCreateChild(nextIdx);
 
                 ctx.solverCtx.push();
                 ctx.expectedPath.add(nextIdx);
