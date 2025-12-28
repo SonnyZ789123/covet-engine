@@ -24,13 +24,14 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
 
         ctx.findNextInit();
 
-        while ((ctx.currentTarget = ctx.backtrackToOpenNode(ctx.currentTarget, true)) != null) {
+        Node targetNode = ctx.currentTarget;
+        while ((targetNode = ctx.backtrackToOpenNode(targetNode, true)) != null) {
 
-            DecisionData decisionData = ctx.currentTarget.decisionData();
+            DecisionData decisionData = targetNode.decisionData();
 
             // ----- LEAF / VIRGIN NODE -----
             if (decisionData == null) {
-                Valuation val = ctx.solvePathOrMarkNode(ctx.currentTarget);
+                Valuation val = ctx.solvePathOrMarkNode(targetNode);
 
                 if (val != null) {
                     return val;
@@ -39,7 +40,7 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
 
             // ----- DECISION NODE -----
             else {
-                ctx.currentTarget = descendDecisionNode(ctx, decisionData);
+                targetNode = descendDecisionNode(ctx, decisionData);
             }
         }
 

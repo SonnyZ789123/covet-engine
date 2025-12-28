@@ -319,6 +319,8 @@ public class InternalConstraintsTree {
   public Valuation solvePathOrMarkNode(Node node) {
     assert node.isVirgin();
 
+    setCurrentTarget(node);
+
     if (checkDepthLimit(node)) {
       debugLogger.finest("[solvePathOrMarkNode] depth or alternative depth limit exceeded");
       node.markDontKnowNode();
