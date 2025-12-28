@@ -227,8 +227,8 @@ public class InternalConstraintsTree {
   }
 
   public void findNextInit() {
-    handleDivergence();
     replay = false;
+    handleDivergence();
     current = root;
   }
 
@@ -326,6 +326,13 @@ public class InternalConstraintsTree {
 
     SolverContextSolveResult solveRes = solveCurrentPath();
     Valuation val = solveRes.val;
+
+    if (val.equals(prev)) {
+      debugLogger.finest("[solvePathForVirginNode] duplicate valuation -> skip");
+      logger.finer("Wont re-execute with known valuation");
+      node.markDontKnowNode();
+      return null;
+    }
 
     switch (solveRes.result) {
       case UNSAT:

@@ -147,8 +147,10 @@ public class SymbolicObjectsContext {
     }
     logger.finest("Making " + name + " symbolic");
     SymbolicObject attr = ei.getObjectAttr(SymbolicObject.class);
-    if(attr != null)
+    if(attr != null) {
+      logger.finest("Unable to make " + name + " symbolic");
       return;
+    }
     attr = new SymbolicObject(name);
     ei.defreeze();
     ei.setObjectAttr(attr);
