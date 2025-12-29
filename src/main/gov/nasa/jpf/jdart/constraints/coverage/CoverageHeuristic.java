@@ -1,9 +1,6 @@
 package gov.nasa.jpf.jdart.constraints.coverage;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.*;
 
 public class CoverageHeuristic<N extends CoverageGraphNode, E extends CoverageGraphEdge> {
     private final CoverageGraph<N, E> coverageGraph;
@@ -12,20 +9,36 @@ public class CoverageHeuristic<N extends CoverageGraphNode, E extends CoverageGr
         this.coverageGraph = coverageGraph;
     }
 
-    public Set<List<E>> getAllPathsToUncoveredNodes(N startNode, N goalNode) {
-        Set<List<E>> allPaths = new HashSet<>();
-        Set<N> uncoveredNodes = coverageGraph.getNodes().stream()
-                .filter(node -> !node.getIsCovered())
-                .collect(Collectors.toSet());
+    public Set<List<E>> getAllPathsToUncoveredNodes() {
         N root = coverageGraph.getRoot();
-
-        // TODO: descend the graph from the root to find all paths to uncovered nodes
-
-        return allPaths;
+        return getPathsToUncoveredNodes(root, 0);
     }
 
-    public List<E> findShortestPath(N startNode, N goalNode) {
-        // Implement Dijkstra's or A* algorithm to find the shortest path
-        return null;
+    public Set<List<E>> getPathsToUncoveredNodes(N startNode, int depth) {
+        Set<E> outgoingEdges = coverageGraph.getEdgesFrom(startNode);
+        Set<List<E>> paths = new HashSet<>();
+
+        outgoingEdges.forEach(currentEdge -> {
+            // TODO: Check depth limit in AnalysisConfig
+
+            N toNode = coverageGraph.getNode(currentEdge.getTo());
+            if (!toNode.getIsCovered()) {
+                List<E> path = new ArrayList<>();
+                path.add(currentEdge);
+                paths.add(path);
+            } else {
+                // Recursively explore further
+                Set<List<E>> nextPaths = getPathsToUncoveredNodes(toNode, depth + 1);
+
+                for (List<E> nextPath : nextPaths) {
+                    List<E> newPath = new ArrayList<>();
+                    newPath.add(currentEdge);
+                    newPath.addAll(nextPath);
+                    paths.add(newPath);
+                }
+            }
+        });
+
+        return paths;
     }
 }
