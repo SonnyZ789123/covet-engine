@@ -235,7 +235,7 @@ public class InternalConstraintsTree {
   public void handleDivergence() {
     if (diverged) {
       debugLogger.finest("[handleDivergence] divergence detected -> backtrack without pop");
-      current = backtrackToOpenNode(current, false);
+      current = backtrackToOpenNode(current, true);
       diverged = false;
     }
   }
@@ -245,7 +245,7 @@ public class InternalConstraintsTree {
     return anaConf.maxAltDepthExceeded(ad) || anaConf.maxDepthExceeded(node.getDepth());
   }
 
-  public Node backtrackToOpenNode(Node node, boolean popPathConditions) {
+  public Node backtrackToOpenNode(Node node, boolean handleDivergence) {
     if (node == null)
       return null;
 
@@ -259,14 +259,6 @@ public class InternalConstraintsTree {
         break;
       }
 
-      if (popPathConditions) {
-        solverCtx.pop();
-        int removed = expectedPath.remove(expectedPath.size() - 1);
-        debugLogger.finest(
-            "[backtrackToOpenNode] pop -> removed branch " + removed +
-                ", new expectedPath=" + expectedPath);
-      }
-
       DecisionData dec = currentNode.decisionData();
       if (dec != null) {
         dec.decrementOpen();
@@ -276,6 +268,15 @@ public class InternalConstraintsTree {
           debugLogger.finest("[backtrackToOpenNode] exhausted child -> decrement unexhausted");
         }
       }
+
+      if (handleDivergence) {
+        continue;
+      }
+
+      solverCtx.pop();
+      int removed = expectedPath.remove(expectedPath.size() - 1);
+      debugLogger.finest("[backtrackToOpenNode] pop -> removed branch " + removed +
+              ", new expectedPath=" + expectedPath);
     }
 
     debugLogger.finest("[backtrackToOpenNode] new expectedPath=" + expectedPath);
