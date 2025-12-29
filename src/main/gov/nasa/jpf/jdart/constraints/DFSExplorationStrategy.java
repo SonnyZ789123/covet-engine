@@ -25,7 +25,7 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
         ctx.findNextInit();
 
         Node targetNode = ctx.currentTarget;
-        while ((targetNode = ctx.backtrackToOpenNode(targetNode, false)) != null) {
+        while ((targetNode = ctx.backtrack(targetNode, false, Node::isOpen)) != null) {
 
             DecisionData decisionData = targetNode.decisionData();
 
