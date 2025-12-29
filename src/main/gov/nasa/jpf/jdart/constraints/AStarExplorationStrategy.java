@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import gov.nasa.jpf.JPF;
 import gov.nasa.jpf.constraints.api.Valuation;
 import gov.nasa.jpf.jdart.constraints.tree.DecisionData;
+import gov.nasa.jpf.jdart.constraints.tree.Node;
 import gov.nasa.jpf.util.JPFLogger;
 
 import java.io.FileReader;
@@ -12,12 +13,12 @@ import java.io.Reader;
 import java.util.Set;
 
 public class AStarExplorationStrategy implements ExplorationStrategy {
-    static final class Node {
+    static final class WeightedNode {
         private final String id;
         private final String label;
         private final double weight;
 
-        private Node(String id, String label, double weight) {
+        private WeightedNode(String id, String label, double weight) {
             this.id = id;
             this.label = label;
             this.weight = weight;
@@ -36,14 +37,14 @@ public class AStarExplorationStrategy implements ExplorationStrategy {
         }
     }
 
-    static final class Edge {
+    static final class WeightedEdge {
         private final String from;
         private final String to;
         private final String label;
         private final double weight;
         private final Integer branchIdx;
 
-        private Edge(String from, String to, String label, double weight, Integer branchIdx) {
+        private WeightedEdge(String from, String to, String label, double weight, Integer branchIdx) {
             this.from = from;
             this.to = to;
             this.label = label;
@@ -72,27 +73,27 @@ public class AStarExplorationStrategy implements ExplorationStrategy {
         }
     }
 
-    static final class Graph {
-        private final Set<Node> nodes;
-        private final Set<Edge> edges;
+    static final class HeuristicGraph {
+        private final Set<WeightedNode> nodes;
+        private final Set<WeightedEdge> edges;
 
-        public Graph(Set<Node> nodes, Set<Edge> edges) {
+        public HeuristicGraph(Set<WeightedNode> nodes, Set<WeightedEdge> edges) {
             this.nodes = nodes;
             this.edges = edges;
         }
 
-        public Set<Node> getNodes() {
+        public Set<WeightedNode> getNodes() {
             return nodes;
         }
 
-        public Set<Edge> getEdges() {
+        public Set<WeightedEdge> getEdges() {
             return edges;
         }
     }
 
     private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
 
-    private static final Graph graph;
+    private static final HeuristicGraph graph;
 
     static {
         try {
@@ -103,7 +104,7 @@ public class AStarExplorationStrategy implements ExplorationStrategy {
                     .setPrettyPrinting()
                     .create();
 
-            graph = gson.fromJson(reader, Graph.class);
+            graph = gson.fromJson(reader, HeuristicGraph.class);
 
             reader.close();
         } catch (Exception e) {
