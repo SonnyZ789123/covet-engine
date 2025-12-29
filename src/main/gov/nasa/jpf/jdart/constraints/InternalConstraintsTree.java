@@ -25,6 +25,7 @@ import gov.nasa.jpf.jdart.config.AnalysisConfig;
 import gov.nasa.jpf.jdart.config.ConcolicValues;
 import gov.nasa.jpf.jdart.constraints.tree.*;
 import gov.nasa.jpf.util.JPFLogger;
+import gov.nasa.jpf.util.Predicate;
 import gov.nasa.jpf.vm.Instruction;
 
 import java.util.*;
@@ -235,7 +236,7 @@ public class InternalConstraintsTree {
   public void handleDivergence() {
     if (diverged) {
       debugLogger.finest("[handleDivergence] divergence detected -> backtrack without pop");
-      current = backtrackToOpenNode(current, true);
+      current = backtrack(current, true, Node::isOpen);
       diverged = false;
     }
   }
@@ -245,12 +246,12 @@ public class InternalConstraintsTree {
     return anaConf.maxAltDepthExceeded(ad) || anaConf.maxDepthExceeded(node.getDepth());
   }
 
-  public Node backtrackToOpenNode(Node node, boolean handleDivergence) {
-    if (node == null)
+  public Node backtrack(Node startNode, boolean handleDivergence, Predicate<Node> stopCondition) {
+    if (startNode == null)
       return null;
 
-    Node currentNode = node;
-    while (!currentNode.isOpen()) {
+    Node currentNode = startNode;
+    while (!stopCondition.isTrue(currentNode)) {
       boolean exh = currentNode.isExhausted();
       currentNode = currentNode.getParent();
 
