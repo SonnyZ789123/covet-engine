@@ -23,8 +23,10 @@ import gov.nasa.jpf.constraints.types.BuiltinTypes;
 import gov.nasa.jpf.jdart.ConcolicInstructionFactory;
 import gov.nasa.jpf.jdart.ConcolicMethodExplorer;
 import gov.nasa.jpf.jdart.ConcolicUtil;
+import gov.nasa.jpf.jdart.constraints.tree.InstructionBranch;
 import gov.nasa.jpf.jvm.bytecode.IfInstruction;
 import gov.nasa.jpf.vm.Instruction;
+import gov.nasa.jpf.vm.MethodInfo;
 import gov.nasa.jpf.vm.StackFrame;
 import gov.nasa.jpf.vm.ThreadInfo;
 
@@ -68,7 +70,7 @@ public class IF_ICMPHelper {
       cmpRes = -1;
     else if(left.conc > right.conc)
       cmpRes = 1;
-    
+
     Expression<Boolean>[] constraints = null;
     if(analysis.needsDecisions()) {
       constraints = new Expression[2];
@@ -105,10 +107,18 @@ public class IF_ICMPHelper {
     
     int branchIdx = (cmp.eval(cmpRes)) ? 0 : 1;
     // ADD SYMBOLIC CONSTRAINT TO PATH CONDITION !!!
-    analysis.decision(ti, instruction, branchIdx, constraints);
+    InstructionBranch[] nextInstructions = null;
+    Instruction targetInsn = instruction.getTarget();
+    Instruction fallThroughInsn = instruction.getNext(ti);
+    if (constraints != null) {
+      nextInstructions = new InstructionBranch[2];
+      nextInstructions[0] = new InstructionBranch(targetInsn, constraints[0]);
+      nextInstructions[1] = new InstructionBranch(fallThroughInsn, constraints[1]);
+    }
+    analysis.decision(ti, instruction, branchIdx, nextInstructions);
 
     
     if (ConcolicInstructionFactory.DEBUG) ConcolicInstructionFactory.logger.finest("Execute IF_ICMP: " + left.conc + " [" + left.symb + "] " + cmp + " " + right.conc + " [" + right.symb + "], symb. result  [" + (branchIdx == 0) + "]");
-    return (branchIdx == 0) ? instruction.getTarget() : instruction.getNext(ti);         
+    return (branchIdx == 0) ? targetInsn : fallThroughInsn;
   }
 }

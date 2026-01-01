@@ -26,6 +26,7 @@ import gov.nasa.jpf.jdart.ConcolicInstructionFactory;
 import gov.nasa.jpf.jdart.ConcolicMethodExplorer;
 import gov.nasa.jpf.jdart.ConcolicUtil;
 import gov.nasa.jpf.jdart.ConcolicUtil.Pair;
+import gov.nasa.jpf.jdart.constraints.tree.InstructionBranch;
 import gov.nasa.jpf.vm.Instruction;
 import gov.nasa.jpf.vm.StackFrame;
 import gov.nasa.jpf.vm.ThreadInfo;
@@ -53,17 +54,19 @@ public class LDIV extends gov.nasa.jpf.jvm.bytecode.LDIV  {
     boolean symbolicDiv = sf.getOperandAttr() != null;
     
     ConcolicUtil.Pair<Long> right = ConcolicUtil.popLong(sf);
-	  ConcolicUtil.Pair<Long> left = ConcolicUtil.popLong(sf);
+    ConcolicUtil.Pair<Long> left = ConcolicUtil.popLong(sf);
+
+    Instruction nextInsn = getNext(ti);
     
     if (symbolicDiv) {
-      Expression<Boolean>[] constraints = null;
+      InstructionBranch[] nextInstructions = null;
       if(analysis.needsDecisions()) {
-        constraints = new Expression[2];
+        nextInstructions = new InstructionBranch[2];
         Constant<Long> zero = Constant.create(BuiltinTypes.SINT64, 0L);
-        constraints[0] = NumericBooleanExpression.create(right.symb, NumericComparator.NE, zero);
-        constraints[1] = NumericBooleanExpression.create(right.symb, NumericComparator.EQ, zero);
+        nextInstructions[0] = new InstructionBranch(nextInsn, NumericBooleanExpression.create(right.symb, NumericComparator.NE, zero));
+        nextInstructions[1] = new InstructionBranch(null, NumericBooleanExpression.create(right.symb, NumericComparator.EQ, zero));
       }
-      analysis.decision(ti, this, (right.conc != 0) ? 0 : 1, constraints);
+      analysis.decision(ti, this, (right.conc != 0) ? 0 : 1, nextInstructions);
     }    
     
 		if (right.conc == 0) 
@@ -78,6 +81,6 @@ public class LDIV extends gov.nasa.jpf.jvm.bytecode.LDIV  {
     ConcolicUtil.pushLong(result, sf);
 
     if (ConcolicInstructionFactory.DEBUG) ConcolicInstructionFactory.logger.finest("Execute IDIV: " + result);		
-    return getNext(ti);
+    return nextInsn;
   }    
 }

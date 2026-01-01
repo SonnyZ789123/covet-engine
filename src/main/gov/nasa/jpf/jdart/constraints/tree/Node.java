@@ -91,15 +91,18 @@ public final class Node {
         //        ") about decision data! " + data.getClass());
     }
 
-    public DecisionData decision(Instruction branchInsn, Expression<Boolean>[] constraints, boolean explore) {
+    public DecisionData decision(
+            Instruction branchInsn,
+            InstructionBranch[] nextInstructions,
+            boolean explore) {
         if(!hasDecisionData()) {
-            DecisionData dec = new DecisionData(this, branchInsn, constraints, explore);
+            DecisionData dec = new DecisionData(this, branchInsn, nextInstructions, explore);
             data = dec;
             return dec;
         }
 
         DecisionData dec = (DecisionData)data;
-        dec.verifyDecision(branchInsn, constraints);
+        dec.verifyDecision(branchInsn, nextInstructions);
 
         return dec;
     }

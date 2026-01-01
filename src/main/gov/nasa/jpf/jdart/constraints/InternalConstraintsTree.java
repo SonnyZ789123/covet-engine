@@ -94,7 +94,7 @@ public class InternalConstraintsTree {
 	  while(curr.decisionData() != null) {
 		  DecisionData dd = curr.decisionData();
 		  int branchIdx = -1;
-		  for(int i = 0; i < dd.getConstraints().length; i++) {
+		  for(int i = 0; i < dd.getBranchWidth(); i++) {
 			  Expression<Boolean> constraint = dd.getConstraint(i);
 			  try {
 				  if(constraint.evaluate(valuation)) {
@@ -171,15 +171,18 @@ public class InternalConstraintsTree {
    *   the branching bytecode instruction being executed
    * @param branchIdx
    *   the index of the concrete branch taken by execution
-   * @param constraints
-   *   the symbolic branch constraints corresponding to each branch alternative
+   * @param nextInstructions
+   *   the symbolic branch constraints with the next instruction corresponding to each branch alternative
    *
    * @return
    *   {@link BranchEffect#NORMAL} if execution matches the symbolic plan,
    *   {@link BranchEffect#UNEXPECTED} if a replay deviates from the expected path,
    *   or {@link BranchEffect#INCONCLUSIVE} if execution enters an exhausted subtree
    */
-  public BranchEffect decision(Instruction insn, int branchIdx, Expression<Boolean>[] constraints) {
+  public BranchEffect decision(
+          Instruction insn,
+          int branchIdx,
+          InstructionBranch[] nextInstructions) {
     debugLogger.finest("[decision] entry -> insn=" + insn,
             ", branchIdx=" + branchIdx +
             ", current node depth=" + current.getDepth() +
@@ -191,7 +194,7 @@ public class InternalConstraintsTree {
     
     DecisionData data;
     try {
-      data = current.decision(insn, constraints, explore);
+      data = current.decision(insn, nextInstructions, explore);
     } catch(IllegalStateException e) {
       logger.severe(e.getMessage());
       // FIXME: this indicates a bug //

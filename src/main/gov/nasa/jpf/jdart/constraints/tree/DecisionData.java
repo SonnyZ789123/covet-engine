@@ -6,33 +6,39 @@ import gov.nasa.jpf.vm.Instruction;
 public final class DecisionData extends NodeData {
     private final Node node;
     private final Instruction branchInsn;
-    private final Expression<Boolean>[] constraints;
+    private final InstructionBranch[] nextInstructions;
     private final Node[] children;
     private int numOpen;
     private int numUnexhausted;
+    private int branchWidth;
 
 
-    public DecisionData(Node node, Instruction branchInsn, Expression<Boolean>[] constraints, boolean explore) {
+    public DecisionData(
+            Node node,
+            Instruction branchInsn,
+            InstructionBranch[] nextInstructions,
+            boolean explore) {
         this.node = node;
         this.branchInsn = branchInsn;
-        this.constraints = constraints;
-        this.children = new Node[constraints.length];
-        this.numUnexhausted = constraints.length;
+        this.nextInstructions = nextInstructions;
+        this.branchWidth = nextInstructions.length;
+        this.children = new Node[branchWidth];
+        this.numUnexhausted = branchWidth;
 
         if(!explore) {
-            for(int i = 0; i < constraints.length; i++) {
+            for(int i = 0; i < branchWidth; i++) {
                 this.children[i] = new Node(node);
                 this.children[i].markDontKnowNode();
             }
             this.numOpen = 0;
         }
         else {
-            this.numOpen = constraints.length;
+            this.numOpen = branchWidth;
         }
     }
 
-    public Expression<Boolean>[] getConstraints() {
-        return constraints;
+    public int getBranchWidth() {
+        return branchWidth;
     }
 
     public int getNumOpen() {
@@ -48,7 +54,7 @@ public final class DecisionData extends NodeData {
     }
 
     public Expression<Boolean> getConstraint(int idx) {
-        return constraints[idx];
+        return nextInstructions[idx].getConstraint();
     }
 
     public boolean hasChild(int idx) {
@@ -78,7 +84,7 @@ public final class DecisionData extends NodeData {
         if(numOpen == 0)
             return -1;
 
-        for(int i = 0; i < constraints.length; i++) {
+        for(int i = 0; i < branchWidth; i++) {
             Node n = children[i];
             if(n == null || n.isOpen())
                 return i;
@@ -95,10 +101,10 @@ public final class DecisionData extends NodeData {
         numUnexhausted--;
     }
 
-    public void verifyDecision(Instruction branchInsn, Expression<Boolean>[] constraints) {
+    public void verifyDecision(Instruction branchInsn, InstructionBranch[] nextInstructions) {
         if(branchInsn != this.branchInsn)
             throw new IllegalStateException("Same decision, but different branching instruction!");
-        if(constraints != null && constraints.length == this.constraints.length)
+        if(nextInstructions != null && nextInstructions.length == this.getBranchWidth())
             throw new IllegalStateException("Same decision, but different number of constraints!");
     }
 
