@@ -25,7 +25,9 @@ import gov.nasa.jpf.constraints.types.BuiltinTypes;
 import gov.nasa.jpf.jdart.ConcolicMethodExplorer;
 import gov.nasa.jpf.jdart.ConcolicUtil;
 import gov.nasa.jpf.jdart.ConcolicUtil.Pair;
+import gov.nasa.jpf.jdart.constraints.tree.InstructionBranch;
 import gov.nasa.jpf.vm.Instruction;
+import gov.nasa.jpf.vm.MethodInfo;
 import gov.nasa.jpf.vm.StackFrame;
 import gov.nasa.jpf.vm.ThreadInfo;
 
@@ -50,37 +52,43 @@ public abstract class SwitchHelper {
     
     Pair<Integer> val = ConcolicUtil.popInt(sf);
     
-    Expression<Boolean>[] decisionExprs = null;
+    InstructionBranch[] caseInstructions = null;
     
     if(analysis.needsDecisions()) {
-      decisionExprs = buildDecisions(si, val.symb);
+      caseInstructions = buildDecisions(si, sf.getMethodInfo(), val.symb);
     }
     
     int idx = si.chooseTarget(val.conc.intValue());
     int targetPc = si.getTargetPC(idx);
     int symbBranch = (idx == gov.nasa.jpf.jvm.bytecode.SwitchInstruction.DEFAULT) ? si.getNumTargets() : idx;
     
-    analysis.decision(ti, si, symbBranch, decisionExprs);
+    analysis.decision(ti, si, symbBranch, caseInstructions);
     return sf.getMethodInfo().getInstructionAt(targetPc);
   }
   
   @SuppressWarnings("unchecked")
-  private static Expression<Boolean>[] buildDecisions(SwitchInstruction si, Expression<Integer> symbExpr) {
+  private static InstructionBranch[] buildDecisions(SwitchInstruction si, MethodInfo mi, Expression<Integer> symbExpr) {
     int numTargets = si.getNumTargets();
-    Expression<Boolean>[] result = new Expression[si.getNumTargets() + 1];
+    InstructionBranch[] result = new InstructionBranch[si.getNumTargets() + 1];
     Expression<Boolean> defaultExpr = null;
     for(int i = 0; i < numTargets; i++) {
       int tgtVal = si.getTargetValue(i);
+      int idx = si.chooseTarget(tgtVal);
+      int targetPc = si.getTargetPC(idx);
+      Instruction nextInstruction = mi.getInstructionAt(targetPc);
+
       Constant<Integer> c = Constant.create(BuiltinTypes.SINT32, tgtVal);
       Expression<Boolean> posExpr = NumericBooleanExpression.create(symbExpr, NumericComparator.EQ, c);
-      result[i] = posExpr;
+      result[i] = new InstructionBranch(nextInstruction, posExpr);
       Expression<Boolean> negExpr = NumericBooleanExpression.create(symbExpr, NumericComparator.NE, c);
       if(defaultExpr == null)
         defaultExpr = negExpr;
       else
         defaultExpr = new PropositionalCompound(defaultExpr, LogicalOperator.AND, negExpr);
     }
-    result[numTargets] = defaultExpr;
+    result[numTargets] = new InstructionBranch(
+        mi.getInstructionAt(si.getTargetPC(gov.nasa.jpf.jvm.bytecode.SwitchInstruction.DEFAULT)),
+        defaultExpr);
     
     return result;
   }

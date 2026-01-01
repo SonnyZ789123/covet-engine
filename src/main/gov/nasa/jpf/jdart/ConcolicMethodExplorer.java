@@ -32,6 +32,7 @@ import gov.nasa.jpf.jdart.config.ConcolicValues;
 import gov.nasa.jpf.jdart.config.ParamConfig;
 import gov.nasa.jpf.jdart.constraints.*;
 import gov.nasa.jpf.jdart.constraints.tree.BranchEffect;
+import gov.nasa.jpf.jdart.constraints.tree.InstructionBranch;
 import gov.nasa.jpf.jdart.objects.SymbolicObjectsContext;
 import gov.nasa.jpf.util.JPFLogger;
 import gov.nasa.jpf.vm.ClassInfo;
@@ -383,9 +384,8 @@ public class ConcolicMethodExplorer {
     return constraintsTree.needsDecision();
   }
   
-  @SafeVarargs
-  public final void decision(ThreadInfo ti, Instruction branchInsn, int chosenIdx, Expression<Boolean> ...expressions) {
-    BranchEffect eff = constraintsTree.decision(branchInsn, chosenIdx, expressions);
+  public final void decision(ThreadInfo ti, Instruction branchInsn, int chosenIdx, InstructionBranch[] nextInstructions) {
+    BranchEffect eff = constraintsTree.decision(branchInsn, chosenIdx, nextInstructions);
     switch(eff) {
     case INCONCLUSIVE:
       logger.severe("Aborting current execution due to inconclusive divergence...");

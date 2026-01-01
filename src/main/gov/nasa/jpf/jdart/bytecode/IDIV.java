@@ -15,7 +15,6 @@
  */
 package gov.nasa.jpf.jdart.bytecode;
 
-import gov.nasa.jpf.constraints.api.Expression;
 import gov.nasa.jpf.constraints.expressions.Constant;
 import gov.nasa.jpf.constraints.expressions.NumericBooleanExpression;
 import gov.nasa.jpf.constraints.expressions.NumericComparator;
@@ -25,6 +24,7 @@ import gov.nasa.jpf.constraints.types.BuiltinTypes;
 import gov.nasa.jpf.jdart.ConcolicInstructionFactory;
 import gov.nasa.jpf.jdart.ConcolicMethodExplorer;
 import gov.nasa.jpf.jdart.ConcolicUtil;
+import gov.nasa.jpf.jdart.constraints.tree.InstructionBranch;
 import gov.nasa.jpf.vm.Instruction;
 import gov.nasa.jpf.vm.StackFrame;
 import gov.nasa.jpf.vm.ThreadInfo;
@@ -35,29 +35,31 @@ public class IDIV extends gov.nasa.jpf.jvm.bytecode.IDIV {
   @SuppressWarnings("unchecked")
   public Instruction execute (ThreadInfo ti) {
     ConcolicMethodExplorer analysis = ConcolicMethodExplorer.getCurrentAnalysis(ti);
-    if(analysis == null)
+    if (analysis == null)
       return super.execute(ti);
     
-		StackFrame sf = ti.getTopFrame();
+    StackFrame sf = ti.getTopFrame();
 
-		if(sf.getOperandAttr(0) == null && sf.getOperandAttr(1) == null) {
-			return super.execute(ti); 
+    if(sf.getOperandAttr(0) == null && sf.getOperandAttr(1) == null) {
+        return super.execute(ti);
     } 
     
     boolean symbolicDiv = sf.getOperandAttr() != null;
     
-	  ConcolicUtil.Pair<Integer> right = ConcolicUtil.popInt(sf);
-	  ConcolicUtil.Pair<Integer> left = ConcolicUtil.popInt(sf);
+    ConcolicUtil.Pair<Integer> right = ConcolicUtil.popInt(sf);
+    ConcolicUtil.Pair<Integer> left = ConcolicUtil.popInt(sf);
+
+    Instruction nextInsn = getNext(ti);
 
     if (symbolicDiv) {
-      Expression<Boolean>[] constraints = null;
+      InstructionBranch[] nextInstructions = null;
       if(analysis.needsDecisions()) {
-        constraints = new Expression[2];
+        nextInstructions = new InstructionBranch[2];
         Constant<Integer> zero = Constant.create(BuiltinTypes.SINT32, 0);
-        constraints[0] = NumericBooleanExpression.create(right.symb, NumericComparator.NE, zero);
-        constraints[1] = NumericBooleanExpression.create(right.symb, NumericComparator.EQ, zero);
+        nextInstructions[0] = new InstructionBranch(nextInsn, NumericBooleanExpression.create(right.symb, NumericComparator.NE, zero));
+        nextInstructions[1] = new InstructionBranch(null, NumericBooleanExpression.create(right.symb, NumericComparator.EQ, zero));
       }
-      analysis.decision(ti, this, (right.conc != 0) ? 0 : 1, constraints);
+      analysis.decision(ti, this, (right.conc != 0) ? 0 : 1, nextInstructions);
     }
     
     if (right.conc == 0)
@@ -72,6 +74,6 @@ public class IDIV extends gov.nasa.jpf.jvm.bytecode.IDIV {
     ConcolicUtil.pushInt(result, sf);
 
     if (ConcolicInstructionFactory.DEBUG) ConcolicInstructionFactory.logger.finest("Execute IDIV: " + result);		
-    return getNext(ti);
+    return nextInsn;
   }    
 }

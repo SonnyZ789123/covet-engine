@@ -25,6 +25,7 @@ import gov.nasa.jpf.jdart.ConcolicInstructionFactory;
 import gov.nasa.jpf.jdart.ConcolicMethodExplorer;
 import gov.nasa.jpf.jdart.ConcolicUtil;
 import gov.nasa.jpf.jdart.constraints.NumericCMP;
+import gov.nasa.jpf.jdart.constraints.tree.InstructionBranch;
 import gov.nasa.jpf.jvm.bytecode.IfInstruction;
 import gov.nasa.jpf.vm.Instruction;
 import gov.nasa.jpf.vm.StackFrame;
@@ -54,24 +55,27 @@ public abstract class IFHelper {
     }
     
     ConcolicUtil.Pair<Integer> v1 = ConcolicUtil.popInt(sf);
-    
+
+    Instruction targetInsn = insn.getTarget();
+    Instruction fallThroughInsn = insn.getNext(ti);
 
     boolean sat = cmp.eval(v1.conc);
     
     if((cmp == NumericComparator.EQ || cmp == NumericComparator.NE) && BuiltinTypes.BOOL.equals(exp.getType())) {
       // special case: boolean expressions    
       Expression<Boolean>[] constraints = null;
+      InstructionBranch[] nextInstructions = null;
       if(analysis.needsDecisions()) {
-        constraints = new Expression[2];
-        constraints[0] = exp.requireAs(BuiltinTypes.BOOL);
-        constraints[1] = exp.requireAs(BuiltinTypes.BOOL);
-        int neg = (cmp == NumericComparator.EQ) ? 0 : 1;
-        constraints[neg] = new Negation(constraints[neg]);
+        Expression<Boolean> boolExp = exp.requireAs(BuiltinTypes.BOOL);
+        Expression<Boolean> negExp = new Negation(boolExp);
+        int negIdx = (cmp == NumericComparator.EQ) ? 0 : 1;
+        nextInstructions = new InstructionBranch[2];
+        nextInstructions[0] = new InstructionBranch(targetInsn, negIdx == 0 ? negExp : boolExp);
+        nextInstructions[1] = new InstructionBranch(fallThroughInsn, negIdx == 1 ? negExp : boolExp);
       }
       int branchIdx = sat ? 0 : 1;
-      
-      
-      analysis.decision(ti, insn, branchIdx, constraints);
+
+      analysis.decision(ti, insn, branchIdx, nextInstructions);
       return sat ? insn.getTarget() : insn.getNext(ti);
     }
     
@@ -101,10 +105,16 @@ public abstract class IFHelper {
     int branchIdx = sat ? 0 : 1;
     
     // ADD SYMBOLIC CONSTRAINT TO PATH CONDITION !!!
-    analysis.decision(ti, insn, branchIdx, constraints);
+    InstructionBranch[] nextInstructions = null;
+    if (constraints != null) {
+      nextInstructions = new InstructionBranch[2];
+      nextInstructions[0] = new InstructionBranch(targetInsn, constraints[0]);
+      nextInstructions[1] = new InstructionBranch(fallThroughInsn, constraints[1]);
+    }
+    analysis.decision(ti, insn, branchIdx, nextInstructions);
 
     if (ConcolicInstructionFactory.DEBUG) ConcolicInstructionFactory.logger.finest("Execute IFEQ: " + v1.conc + " [" + v1.symb + "], symb. result  [" + sat  + "]");    
-    return sat ? insn.getTarget() : insn.getNext(ti);           
+    return sat ? targetInsn : fallThroughInsn;
     
   }
 

@@ -32,6 +32,7 @@ import gov.nasa.jpf.constraints.types.BuiltinTypes;
 import gov.nasa.jpf.constraints.types.Type;
 import gov.nasa.jpf.jdart.ConcolicMethodExplorer;
 import gov.nasa.jpf.jdart.annotations.SymbolicPeer;
+import gov.nasa.jpf.jdart.constraints.tree.InstructionBranch;
 import gov.nasa.jpf.vm.MJIEnv;
 import gov.nasa.jpf.vm.NativePeer;
 import gov.nasa.jpf.vm.ThreadInfo;
@@ -106,20 +107,26 @@ public class JPF_java_lang_Math extends gov.nasa.jpf.vm.JPF_java_lang_Math {
     NumericComparator lowCmp = (strict) ? NumericComparator.GT : NumericComparator.GE;
     NumericComparator highCmp = (strict) ? NumericComparator.LT : NumericComparator.LE;
     
-    Expression<Boolean>[] constraints = null;
+    InstructionBranch[] nextInstructions = null;
     if(analysis.needsDecisions()) {
-      constraints = new Expression[2];
-      constraints[0] = new PropositionalCompound(
-          new NumericBooleanExpression(valSymb, lowCmp, min), LogicalOperator.AND, NumericBooleanExpression.create(valSymb, highCmp, max));
-      constraints[1] = new PropositionalCompound(
-          NumericBooleanExpression.create(valSymb, lowCmp.not(), min), LogicalOperator.OR, NumericBooleanExpression.create(valSymb, highCmp.not(), max));
+      nextInstructions = new InstructionBranch[2];
+      nextInstructions[0] = new InstructionBranch(null,
+              new PropositionalCompound(
+              new NumericBooleanExpression(valSymb, lowCmp, min),
+                      LogicalOperator.AND,
+                      NumericBooleanExpression.create(valSymb, highCmp, max)));
+      nextInstructions[1] = new InstructionBranch(null,
+              new PropositionalCompound(
+              NumericBooleanExpression.create(valSymb, lowCmp.not(), min),
+                      LogicalOperator.OR,
+                      NumericBooleanExpression.create(valSymb, highCmp.not(), max)));
     }
     
     int lcr = value.compareTo(min.getValue());
     int hcr = value.compareTo(max.getValue());
     int branchIdx = (lowCmp.eval(lcr) && highCmp.eval(hcr)) ? 0 : 1;
     
-    analysis.decision(ti, null, branchIdx, constraints);
+    analysis.decision(ti, null, branchIdx, nextInstructions);
   }
   
   @MJI
