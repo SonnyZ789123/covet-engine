@@ -2,22 +2,24 @@ package gov.nasa.jpf.jdart.constraints;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 import gov.nasa.jpf.JPF;
 import gov.nasa.jpf.constraints.api.Valuation;
-import gov.nasa.jpf.jdart.constraints.coverage.graph.CoverageEdge;
-import gov.nasa.jpf.jdart.constraints.coverage.graph.CoverageGraph;
-import gov.nasa.jpf.jdart.constraints.coverage.graph.CoverageNode;
+import gov.nasa.jpf.jdart.constraints.coverage.pathcov.MethodInstructionCoverage;
 import gov.nasa.jpf.jdart.constraints.tree.DecisionData;
 import gov.nasa.jpf.jdart.constraints.tree.Node;
 import gov.nasa.jpf.util.JPFLogger;
 
 import java.io.FileReader;
 import java.io.Reader;
+import java.lang.reflect.Type;
+import java.util.List;
+import java.util.Map;
 
 public class CoverageHeuristic implements ExplorationStrategy {
     private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
 
-    private static final CoverageGraph<CoverageNode, CoverageEdge> graph;
+    private static final MethodInstructionCoverage methodInstructionCoverage;
 
     static {
         try {
@@ -28,7 +30,10 @@ public class CoverageHeuristic implements ExplorationStrategy {
                     .setPrettyPrinting()
                     .create();
 
-            graph = gson.fromJson(reader, CoverageGraph.class);
+            Type type = new TypeToken<Map<String, List<int[]>>>() {}.getType();
+            Map<String, List<int[]>> instructionPathsByMethod = gson.fromJson(reader, type);
+
+            methodInstructionCoverage = new MethodInstructionCoverage(instructionPathsByMethod);
 
             reader.close();
         } catch (Exception e) {
