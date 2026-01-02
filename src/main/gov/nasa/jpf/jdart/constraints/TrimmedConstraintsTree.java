@@ -22,6 +22,7 @@ import gov.nasa.jpf.constraints.expressions.PropositionalCompound;
 import gov.nasa.jpf.constraints.util.ExpressionUtil;
 import gov.nasa.jpf.jdart.constraints.tree.DecisionData;
 import gov.nasa.jpf.jdart.constraints.tree.Node;
+import gov.nasa.jpf.jdart.constraints.tree.NodeType;
 import gov.nasa.jpf.jdart.constraints.tree.ResultData;
 import gov.nasa.jpf.util.JPFLogger;
 import gov.nasa.jpf.util.Pair;
@@ -204,14 +205,14 @@ public class TrimmedConstraintsTree {
         }
 
         // moving back up
-        if (!curr.hasData() || curr.dataIsUnsatisfiableData()) {
+        if (curr.isVirgin() || curr.getDataType() == NodeType.UNSATISFIABLE) {
           done = null;
         }
-        else if (curr.dataIsResultData()) {
+        else if (curr.getDataType() == NodeType.RESULT) {
           ResultData resultData = (ResultData) curr.getData();
           done = new TrimmedConstraintsTree.ResultNode(resultData.getResult());
         }
-        else if (curr.dataIsDontKnowData()) {
+        else if (curr.getDataType() == NodeType.DONT_KNOW) {
           done = TrimmedConstraintsTree.DONT_KNOW_NODE;
         }
         gov.nasa.jpf.jdart.constraints.tree.Node tmp = curr; curr = prev; prev = tmp;

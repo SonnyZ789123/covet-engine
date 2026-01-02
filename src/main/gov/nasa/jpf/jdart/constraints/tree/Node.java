@@ -1,6 +1,5 @@
 package gov.nasa.jpf.jdart.constraints.tree;
 
-import gov.nasa.jpf.constraints.api.Expression;
 import gov.nasa.jpf.jdart.constraints.PathResult;
 import gov.nasa.jpf.vm.Instruction;
 
@@ -11,12 +10,14 @@ public final class Node {
     private int altDepth;
 
     private NodeData data;
-
+    private NodeType dataType;
 
     public Node(Node parent) {
         this.parent = parent;
         this.depth = (parent != null) ? parent.depth + 1 : 0;
         this.altDepth = (parent != null) ? parent.altDepth : 0;
+        this.data = null;
+        this.dataType = NodeType.VIRGIN;
     }
 
     public int incAltDepth() {
@@ -24,9 +25,12 @@ public final class Node {
     }
 
     public boolean isVirgin() {
-        return (data == null);
+        if (dataType == NodeType.VIRGIN) {
+            assert data == null;
+            return true;
+        }
+        return false;
     }
-
 
     public Node getParent() {
         return parent;
@@ -40,97 +44,83 @@ public final class Node {
         return data;
     }
 
-    public boolean hasData() {
-        return (data != null);
-    }
-
-    public boolean dataIsDecisionData() {
-        return hasData() && data.getClass().getName().equals(DecisionData.class.getName());
-    }
-
-    public boolean dataIsUnsatisfiableData() {
-        return hasData() && data.getClass().getName().equals(UnsatisfiableData.class.getName());
-    }
-
-    public boolean dataIsResultData() {
-        return hasData() && data.getClass().getName().equals(ResultData.class.getName());
-    }
-
-    public boolean dataIsDontKnowData() {
-        return hasData() && data.getClass().getName().equals(DontKnowData.class.getName());
+    public NodeType getDataType() {
+        return dataType;
     }
 
     public DecisionData decisionData() {
-        if(data == null || data.getClass() != DecisionData.class)
-            return null;
-        return (DecisionData)data;
+        if (dataType == NodeType.DECISION) {
+            assert data != null && data.getClass() == DecisionData.class;
+            return (DecisionData) data;
+        }
+
+        return null;
     }
 
     public boolean isOpen() {
-        DecisionData dec = decisionData();
-        if(dec == null)
-            return (data == null);
-        return dec.hasOpen();
+        // A node is open if it is a decision node with open branches,
+        // or if it is virgin (we still have not explored it)
+        if (dataType == NodeType.DECISION) {
+            DecisionData dec = (DecisionData) data;
+            return dec.hasOpen();
+        }
+
+        return dataType == NodeType.VIRGIN;
     }
 
     public boolean isExhausted() {
-        DecisionData dec = decisionData();
-        if(dec == null)
-            return (data != null && data.getClass() != DontKnowData.class); // Dont know is not exhausted, all other forms of data are
+        // induction: A node is exhausted if it is a decision node with exhausted child branches,
+        // base case: or it is a node that has a result (sat or unsat)
+        if (dataType == NodeType.DECISION) {
+            DecisionData dec = (DecisionData) data;
+            return !dec.hasUnexhausted();
+        }
 
-        return !dec.hasUnexhausted();
+        return (dataType == NodeType.RESULT ||
+                dataType == NodeType.UNSATISFIABLE);
+
     }
 
-    public boolean hasDecisionData() {
-        if (data == null || data.getClass() == DontKnowData.class)
-            return false;
-
-        //if(data.getClass() == DecisionData.class)
-        return true;
-        //throw new IllegalArgumentException("Querying non-decision node (depth: "+ depth +
-        //        ") about decision data! " + data.getClass());
+    public boolean hasUnknownData() {
+        return dataType == NodeType.DONT_KNOW || dataType == NodeType.VIRGIN;
     }
 
-    public DecisionData decision(
-            Instruction branchInsn,
-            InstructionBranch[] nextInstructions,
-            boolean explore) {
-        if(!hasDecisionData()) {
+    public DecisionData decision(Instruction branchInsn, InstructionBranch[] nextInstructions, boolean explore) {
+        if (hasUnknownData()) {
             DecisionData dec = new DecisionData(this, branchInsn, nextInstructions, explore);
+            dataType = NodeType.DECISION;
             data = dec;
             return dec;
         }
 
-        DecisionData dec = (DecisionData)data;
+        assert dataType == NodeType.DECISION;
+        DecisionData dec = (DecisionData) data;
         dec.verifyDecision(branchInsn, nextInstructions);
-
         return dec;
     }
 
     public void markResultNode(PathResult result) {
-        if(data == null || data.getClass() == DontKnowData.class) {
-            data = new ResultData(result);
-        }
+        // Should only mark an unknown node as result
+        assert dataType == NodeType.VIRGIN || dataType == NodeType.DONT_KNOW;
 
-        //throw new IllegalStateException("Attempting to finish already explored path (data = " + data.getClass().getName() + "!");
+        dataType = NodeType.RESULT;
+        data = new ResultData(result);
     }
 
     public void markDontKnowNode() {
-        if(data == null) {
-            data = DontKnowData.getInstance();
-        }
+        // Should only mark an unexplored node as dont-know
+        assert dataType == NodeType.VIRGIN;
 
-//        if(data.getClass() != DontKnowData.class) {
-//            System.err.println("Attempting to fail already explored path!");
-//        }
+        dataType = NodeType.DONT_KNOW;
+        data = DontKnowData.getInstance();
     }
 
     public void markUnsatisfiableNode() {
-        if(data == null) {
-            data = UnsatisfiableData.getInstance();
-        }
+        // Should only mark an unexplored node as dont-know
+        assert dataType == NodeType.VIRGIN;
 
-        //throw new IllegalStateException("Attempting to fail already explored path!");
+        dataType = NodeType.UNSATISFIABLE;
+        data = UnsatisfiableData.getInstance();
     }
 
 }
