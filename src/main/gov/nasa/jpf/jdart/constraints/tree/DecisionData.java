@@ -102,9 +102,9 @@ public final class DecisionData extends NodeData {
     }
 
     public void verifyDecision(Instruction branchInsn, InstructionBranch[] nextInstructions) {
-        if(branchInsn != this.branchInsn)
+        if (branchInsn != this.branchInsn)
             throw new IllegalStateException("Same decision, but different branching instruction!");
-        if(nextInstructions != null && nextInstructions.length == this.getBranchWidth())
+        if (nextInstructions != null && nextInstructions.length == this.getBranchWidth())
             throw new IllegalStateException("Same decision, but different number of constraints!");
     }
 

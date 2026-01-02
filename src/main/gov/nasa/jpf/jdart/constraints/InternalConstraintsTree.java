@@ -414,7 +414,7 @@ public class InternalConstraintsTree {
   }
 
   public boolean needsDecision() {
-    return !current.hasDecisionData();
+    return current.hasUnknownData();
   }
 
 }
