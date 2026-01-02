@@ -209,7 +209,7 @@ public class ConcolicMethodExplorer {
 
     // Compute next valuation if needed
     if (nextValuation == null) {
-      nextValuation = explorationStrategy.findNext(constraintsTree);
+      nextValuation = explorationStrategy.findNext(constraintsTree, methodInfo);
       debugLogger.finest("[hasMoreChoices] findNext() -> " + (nextValuation == null ? "null (no more paths)" : "valuation found"));
     }
 
@@ -221,7 +221,7 @@ public class ConcolicMethodExplorer {
   public boolean advanceValuation() {
     // Ensure a next valuation exists
     if (nextValuation == null) {
-      nextValuation = explorationStrategy.findNext(constraintsTree);
+      nextValuation = explorationStrategy.findNext(constraintsTree, methodInfo);
       debugLogger.finest("[advanceValuation] findNext() -> " + (nextValuation == null ? "null (cannot advance)" : "valuation found"));
     }
 

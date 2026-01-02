@@ -5,6 +5,7 @@ import gov.nasa.jpf.constraints.api.Valuation;
 import gov.nasa.jpf.jdart.constraints.tree.DecisionData;
 import gov.nasa.jpf.jdart.constraints.tree.Node;
 import gov.nasa.jpf.util.JPFLogger;
+import gov.nasa.jpf.vm.MethodInfo;
 
 public class DFSExplorationStrategy implements ExplorationStrategy {
 
@@ -19,7 +20,7 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
     }
 
     @Override
-    public Valuation findNext(InternalConstraintsTree ctx) {
+    public Valuation findNext(InternalConstraintsTree ctx, MethodInfo methodInfo) {
         debugLogger.finest("[findNext] entry -> expectedPath=" + ctx.expectedPath);
 
         ctx.findNextInit();
