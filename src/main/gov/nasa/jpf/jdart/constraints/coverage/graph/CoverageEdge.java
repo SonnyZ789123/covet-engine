@@ -1,6 +1,4 @@
-package gov.nasa.jpf.jdart.constraints.coverage;
-
-import gov.nasa.jpf.jdart.constraints.CoverageHeuristic;
+package gov.nasa.jpf.jdart.constraints.coverage.graph;
 
 import java.util.Objects;
 

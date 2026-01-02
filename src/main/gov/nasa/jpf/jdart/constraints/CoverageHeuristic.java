@@ -4,9 +4,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import gov.nasa.jpf.JPF;
 import gov.nasa.jpf.constraints.api.Valuation;
-import gov.nasa.jpf.jdart.constraints.coverage.CoverageEdge;
-import gov.nasa.jpf.jdart.constraints.coverage.CoverageGraph;
-import gov.nasa.jpf.jdart.constraints.coverage.CoverageNode;
+import gov.nasa.jpf.jdart.constraints.coverage.graph.CoverageEdge;
+import gov.nasa.jpf.jdart.constraints.coverage.graph.CoverageGraph;
+import gov.nasa.jpf.jdart.constraints.coverage.graph.CoverageNode;
 import gov.nasa.jpf.jdart.constraints.tree.DecisionData;
 import gov.nasa.jpf.jdart.constraints.tree.Node;
 import gov.nasa.jpf.util.JPFLogger;
@@ -22,7 +22,7 @@ public class CoverageHeuristic implements ExplorationStrategy {
     static {
         try {
             // Adjust path as needed (absolute or relative to working dir)
-            Reader reader = new FileReader("/workspace/data/coverage-graph.json");
+            Reader reader = new FileReader("/workspace/data/jdart_instruction_paths.json");
 
             Gson gson = new GsonBuilder()
                     .setPrettyPrinting()

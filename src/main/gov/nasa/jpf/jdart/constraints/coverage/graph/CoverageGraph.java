@@ -1,4 +1,4 @@
-package gov.nasa.jpf.jdart.constraints.coverage;
+package gov.nasa.jpf.jdart.constraints.coverage.graph;
 
 import java.util.Set;
 import java.util.stream.Collectors;
