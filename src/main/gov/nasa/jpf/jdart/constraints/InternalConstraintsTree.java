@@ -265,8 +265,6 @@ public class InternalConstraintsTree {
 
       DecisionData dec = currentNode.decisionData();
       if (dec != null) {
-        dec.decrementOpen();
-
         if (exh) {
           dec.decrementUnexhausted();
           debugLogger.finest("[backtrackToOpenNode] exhausted child -> decrement unexhausted");
