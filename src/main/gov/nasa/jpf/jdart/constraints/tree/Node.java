@@ -156,17 +156,11 @@ public final class Node {
         }
     }
 
-    private boolean shouldUpdateNumOpen() {
-        return dataType == NodeType.RESULT ||
-                dataType == NodeType.UNSATISFIABLE ||
-                dataType == NodeType.DONT_KNOW;
-    }
-
     private void markNode(NodeType type, NodeData nodeData) {
         dataType = type;
         data = nodeData;
 
-        if (shouldUpdateNumOpen()) {
+        if (!isOpen()) {
             decrementOpenOnParent();
         }
     }
