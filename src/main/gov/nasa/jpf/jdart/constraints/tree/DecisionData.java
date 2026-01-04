@@ -24,16 +24,13 @@ public final class DecisionData extends NodeData {
         this.branchWidth = nextInstructions.length;
         this.children = new Node[branchWidth];
         this.numUnexhausted = branchWidth;
+        this.numOpen = branchWidth;
 
-        if(!explore) {
+        if (!explore) {
             for(int i = 0; i < branchWidth; i++) {
                 this.children[i] = new Node(node);
                 this.children[i].markDontKnowNode();
             }
-            this.numOpen = 0;
-        }
-        else {
-            this.numOpen = branchWidth;
         }
     }
 

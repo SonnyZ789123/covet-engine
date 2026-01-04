@@ -97,16 +97,39 @@ public final class Node {
         return dec;
     }
 
-    public void updateParentNumOpen() {
-        DecisionData parentDec = parent.decisionData();
-        if (parentDec != null) {
-            parentDec.decrementOpen();
+    private void decrementOpenOnParent() {
+        if (parent == null) {
+            return;
         }
+        parent.decrementOpenChildren();
+    }
+
+    private void decrementOpenChildren() {
+        DecisionData dec = decisionData();
+        if (dec == null) {
+            return;
+        }
+
+        dec.decrementOpen();
+
+        if (!dec.hasOpen()) {
+            decrementOpenOnParent();
+        }
+    }
+
+    private boolean isBranchEndNode() {
+        return dataType == NodeType.RESULT ||
+                dataType == NodeType.UNSATISFIABLE ||
+                dataType == NodeType.DONT_KNOW;
     }
 
     private void markNode(NodeType type, NodeData nodeData) {
         dataType = type;
         data = nodeData;
+
+        if (isBranchEndNode()) {
+            decrementOpenOnParent();
+        }
     }
 
     public void markDecisionNode(Instruction branchInsn, InstructionBranch[] nextInstructions, boolean explore) {
