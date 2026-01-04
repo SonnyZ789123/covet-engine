@@ -13,11 +13,7 @@ public final class DecisionData extends NodeData {
     private int numUnexhausted;
 
 
-    public DecisionData(
-            Node node,
-            Instruction branchInsn,
-            InstructionBranch[] nextInstructions,
-            boolean explore) {
+    public DecisionData(Node node, Instruction branchInsn, InstructionBranch[] nextInstructions) {
         this.node = node;
         this.branchInsn = branchInsn;
         this.nextInstructions = nextInstructions;
@@ -25,13 +21,6 @@ public final class DecisionData extends NodeData {
         this.children = new Node[branchWidth];
         this.numUnexhausted = branchWidth;
         this.numOpen = branchWidth;
-
-        if (!explore) {
-            for(int i = 0; i < branchWidth; i++) {
-                this.children[i] = new Node(node);
-                this.children[i].markDontKnowNode();
-            }
-        }
     }
 
     public int getBranchWidth() {
@@ -78,7 +67,7 @@ public final class DecisionData extends NodeData {
     }
 
     public int nextOpenChild() {
-        if(numOpen == 0)
+        if (!hasOpen())
             return -1;
 
         for(int i = 0; i < branchWidth; i++) {
@@ -104,5 +93,4 @@ public final class DecisionData extends NodeData {
         if (nextInstructions != null && nextInstructions.length == this.getBranchWidth())
             throw new IllegalStateException("Same decision, but different number of constraints!");
     }
-
 }
