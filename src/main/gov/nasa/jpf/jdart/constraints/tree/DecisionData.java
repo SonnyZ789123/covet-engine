@@ -8,9 +8,9 @@ public final class DecisionData extends NodeData {
     private final Instruction branchInsn;
     private final InstructionBranch[] nextInstructions;
     private final Node[] children;
+    private final int branchWidth;
     private int numOpen;
     private int numUnexhausted;
-    private int branchWidth;
 
 
     public DecisionData(

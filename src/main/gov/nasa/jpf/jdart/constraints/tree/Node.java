@@ -87,16 +87,23 @@ public final class Node {
 
     public DecisionData decision(Instruction branchInsn, InstructionBranch[] nextInstructions, boolean explore) {
         if (hasUnknownData()) {
-            DecisionData dec = new DecisionData(this, branchInsn, nextInstructions, explore);
-            dataType = NodeType.DECISION;
-            data = dec;
-            return dec;
+            markDecisionNode(branchInsn, nextInstructions, explore);
+            return (DecisionData) data;
         }
 
         assert dataType == NodeType.DECISION;
         DecisionData dec = (DecisionData) data;
         dec.verifyDecision(branchInsn, nextInstructions);
         return dec;
+    }
+
+    public void markDecisionNode(Instruction branchInsn, InstructionBranch[] nextInstructions, boolean explore) {
+        // Should only mark an unknown node as decision
+        assert dataType == NodeType.VIRGIN || dataType == NodeType.DONT_KNOW;
+
+        DecisionData dec = new DecisionData(this, branchInsn, nextInstructions, explore);
+        dataType = NodeType.DECISION;
+        data = dec;
     }
 
     public void markResultNode(PathResult result) {
