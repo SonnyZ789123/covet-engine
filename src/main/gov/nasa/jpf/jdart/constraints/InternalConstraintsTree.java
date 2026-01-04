@@ -255,20 +255,11 @@ public class InternalConstraintsTree {
 
     Node currentNode = startNode;
     while (!stopCondition.isTrue(currentNode)) {
-      boolean exh = currentNode.isExhausted();
       currentNode = currentNode.getParent();
 
       if (currentNode == null) {
         debugLogger.finest("[backtrackToOpenNode] reached root parent -> stop");
         break;
-      }
-
-      DecisionData dec = currentNode.decisionData();
-      if (dec != null) {
-        if (exh) {
-          dec.decrementUnexhausted();
-          debugLogger.finest("[backtrackToOpenNode] exhausted child -> decrement unexhausted");
-        }
       }
 
       if (handleDivergence) {
