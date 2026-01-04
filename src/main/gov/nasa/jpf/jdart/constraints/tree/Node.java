@@ -119,10 +119,11 @@ public final class Node {
         if (parent == null) {
             return;
         }
-        parent.decrementOpenChildren();
+        boolean exh = isExhausted();
+        parent.decrementOpenChildren(exh);
     }
 
-    private void decrementOpenChildren() {
+    private void decrementOpenChildren(boolean decrementExhausted) {
         DecisionData dec = decisionData();
         if (dec == null) {
             return;
@@ -133,11 +134,23 @@ public final class Node {
             // which decremented the numOpen count. So for analysis, we don't care anymore what happens from this
             // decision point.
             // Don't propagate further! We only want to decrement the parent once when !hasOpen().
-            debugLogger.finest("[decrementOpenChildren] tried to decrement when numOpen=" + dec.getNumOpen());
+            debugLogger.finest("[decrementOpenChildren] tried to decrement when numOpen=" + dec.getNumOpen() +
+                    " at depth=" + depth);
             return;
         }
         dec.decrementOpen();
+        debugLogger.finest("[decrementOpenChildren] decremented open children, numOpen=" + dec.getNumOpen() +
+                " at depth=" + depth);
 
+        if (decrementExhausted) {
+            debugLogger.finest("[decrementOpenChildren] decremented unexhausted children, numUnexhausted=" +
+                    dec.getNumUnexhausted() + " at depth=" + depth);
+            dec.decrementUnexhausted();
+        }
+
+        // Invariant: the node is unexhausted if and only if the node is open
+        // It is possible that the node is not open, but still unexhausted (DONT_KNOW children)
+        // So if after decrementing, the node is open, we also know it is unexhausted so we don't have to check that.
         if (!dec.hasOpen()) {
             decrementOpenOnParent();
         }
