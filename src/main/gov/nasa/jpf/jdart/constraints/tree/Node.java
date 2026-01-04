@@ -97,37 +97,44 @@ public final class Node {
         return dec;
     }
 
+    public void updateParentNumOpen() {
+        DecisionData parentDec = parent.decisionData();
+        if (parentDec != null) {
+            parentDec.decrementOpen();
+        }
+    }
+
+    private void markNode(NodeType type, NodeData nodeData) {
+        dataType = type;
+        data = nodeData;
+    }
+
     public void markDecisionNode(Instruction branchInsn, InstructionBranch[] nextInstructions, boolean explore) {
         // Should only mark an unknown node as decision
         assert dataType == NodeType.VIRGIN || dataType == NodeType.DONT_KNOW;
 
-        DecisionData dec = new DecisionData(this, branchInsn, nextInstructions, explore);
-        dataType = NodeType.DECISION;
-        data = dec;
+        markNode(NodeType.DECISION, new DecisionData(this, branchInsn, nextInstructions, explore));
     }
 
     public void markResultNode(PathResult result) {
         // Should only mark an unknown node as result
         assert dataType == NodeType.VIRGIN || dataType == NodeType.DONT_KNOW;
 
-        dataType = NodeType.RESULT;
-        data = new ResultData(result);
+        markNode(NodeType.RESULT, new ResultData(result));
     }
 
     public void markDontKnowNode() {
         // Should only mark an unexplored node as dont-know
         assert dataType == NodeType.VIRGIN;
 
-        dataType = NodeType.DONT_KNOW;
-        data = DontKnowData.getInstance();
+        markNode(NodeType.DONT_KNOW, data);
     }
 
     public void markUnsatisfiableNode() {
         // Should only mark an unexplored node as dont-know
         assert dataType == NodeType.VIRGIN;
 
-        dataType = NodeType.UNSATISFIABLE;
-        data = UnsatisfiableData.getInstance();
+        markNode(NodeType.UNSATISFIABLE, UnsatisfiableData.getInstance());
     }
 
 }
