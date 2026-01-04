@@ -205,7 +205,7 @@ public class TrimmedConstraintsTree {
         }
 
         // moving back up
-        if (curr.isVirgin() || curr.getDataType() == NodeType.UNSATISFIABLE) {
+        if (curr.getDataType() == NodeType.VIRGIN || curr.getDataType() == NodeType.UNSATISFIABLE) {
           done = null;
         }
         else if (curr.getDataType() == NodeType.RESULT) {
