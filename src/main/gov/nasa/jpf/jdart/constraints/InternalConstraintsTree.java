@@ -266,14 +266,18 @@ public class InternalConstraintsTree {
         continue;
       }
 
-      solverCtx.pop();
-      int removed = expectedPath.remove(expectedPath.size() - 1);
-      debugLogger.finest("[backtrackToOpenNode] pop -> removed branch " + removed +
-              ", new expectedPath=" + expectedPath);
+      popExpectedPath();
     }
 
     debugLogger.finest("[backtrackToOpenNode] new expectedPath=" + expectedPath);
     return currentNode;
+  }
+
+  public void popExpectedPath() {
+    solverCtx.pop();
+    int removed = expectedPath.remove(expectedPath.size() - 1);
+    debugLogger.finest("[popExpectedPath] pop -> removed branch " + removed +
+            ", new expectedPath=" + expectedPath);
   }
 
   public void extendExpectedPath(DecisionData decisionData, int branchIndex) {
