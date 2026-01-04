@@ -320,7 +320,7 @@ public class InternalConstraintsTree {
    * @return A new valuation for the path condition, or {@code null} if solving failed
    */
   public Valuation solvePathOrMarkNode(Node node) {
-    assert node.isVirgin();
+    assert node.getDataType() == NodeType.VIRGIN;
 
     setCurrentTarget(node);
 

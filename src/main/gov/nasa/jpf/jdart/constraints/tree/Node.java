@@ -24,14 +24,6 @@ public final class Node {
         return ++altDepth;
     }
 
-    public boolean isVirgin() {
-        if (dataType == NodeType.VIRGIN) {
-            assert data == null;
-            return true;
-        }
-        return false;
-    }
-
     public Node getParent() {
         return parent;
     }
