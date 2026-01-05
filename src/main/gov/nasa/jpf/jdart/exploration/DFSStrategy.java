@@ -1,17 +1,18 @@
-package gov.nasa.jpf.jdart.constraints;
+package gov.nasa.jpf.jdart.exploration;
 
 import gov.nasa.jpf.JPF;
 import gov.nasa.jpf.constraints.api.Valuation;
+import gov.nasa.jpf.jdart.constraints.InternalConstraintsTree;
 import gov.nasa.jpf.jdart.constraints.tree.DecisionData;
 import gov.nasa.jpf.jdart.constraints.tree.Node;
 import gov.nasa.jpf.util.JPFLogger;
 import gov.nasa.jpf.vm.MethodInfo;
 
-public class DFSExplorationStrategy implements ExplorationStrategy {
+public class DFSStrategy implements ExplorationStrategy {
 
     private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
 
-    public DFSExplorationStrategy() {}
+    public DFSStrategy() {}
 
     private Node descendDecisionNode(InternalConstraintsTree ctx, DecisionData decisionData) {
         int nextIdx = decisionData.nextOpenChild();
