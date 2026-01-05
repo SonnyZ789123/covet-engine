@@ -1,52 +1,23 @@
-package gov.nasa.jpf.jdart.constraints;
+package gov.nasa.jpf.jdart.exploration;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
 import gov.nasa.jpf.JPF;
 import gov.nasa.jpf.constraints.api.Valuation;
-import gov.nasa.jpf.jdart.constraints.coverage.pathcov.MethodInstructionCoverage;
+import gov.nasa.jpf.jdart.constraints.InternalConstraintsTree;
 import gov.nasa.jpf.jdart.constraints.tree.DecisionData;
 import gov.nasa.jpf.jdart.constraints.tree.Node;
 import gov.nasa.jpf.jdart.constraints.tree.NodeType;
 import gov.nasa.jpf.util.JPFLogger;
 import gov.nasa.jpf.vm.MethodInfo;
 
-import java.io.FileReader;
-import java.io.Reader;
-import java.lang.reflect.Type;
 import java.util.*;
 
-public class CoverageHeuristicExplorationStrategy implements ExplorationStrategy {
+public class BFSStrategy implements ExplorationStrategy {
     private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
-
-    // TODO: use heuristic
-    private static final MethodInstructionCoverage methodInstructionCoverage;
-
-    static {
-        try {
-            // Adjust path as needed (absolute or relative to working dir)
-            Reader reader = new FileReader("/workspace/data/jdart_instruction_paths.json");
-
-            Gson gson = new GsonBuilder()
-                    .setPrettyPrinting()
-                    .create();
-
-            Type type = new TypeToken<Map<String, List<int[]>>>() {}.getType();
-            Map<String, List<int[]>> instructionPathsByMethod = gson.fromJson(reader, type);
-
-            methodInstructionCoverage = new MethodInstructionCoverage(instructionPathsByMethod);
-
-            reader.close();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
 
     private final Queue<Node> currentNodes;
     private Node previousTargetedNode;
 
-    public CoverageHeuristicExplorationStrategy() {
+    public BFSStrategy() {
         currentNodes = new ArrayDeque<>();
         previousTargetedNode = null;
     }

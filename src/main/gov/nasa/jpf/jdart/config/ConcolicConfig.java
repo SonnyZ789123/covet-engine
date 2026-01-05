@@ -22,8 +22,8 @@ import gov.nasa.jpf.constraints.solvers.ConstraintSolverFactory;
 import gov.nasa.jpf.constraints.types.TypeContext;
 import gov.nasa.jpf.jdart.ConcolicPerturbator;
 import gov.nasa.jpf.jdart.ConcolicUtil;
-import gov.nasa.jpf.jdart.constraints.DFSExplorationStrategy;
-import gov.nasa.jpf.jdart.constraints.ExplorationStrategy;
+import gov.nasa.jpf.jdart.exploration.DFSStrategy;
+import gov.nasa.jpf.jdart.exploration.ExplorationStrategy;
 import gov.nasa.jpf.jdart.termination.NeverTerminate;
 import gov.nasa.jpf.jdart.termination.TerminationStrategy;
 
@@ -275,7 +275,7 @@ public class ConcolicConfig {
 
   public static ExplorationStrategy parseExplorationStrategy(Config conf) {
     if (!conf.hasValue("jdart.exploration.strategy.class")) {
-      return new DFSExplorationStrategy();
+      return new DFSStrategy();
     }
     return conf.getEssentialInstance("jdart.exploration.strategy.class", ExplorationStrategy.class);
   }

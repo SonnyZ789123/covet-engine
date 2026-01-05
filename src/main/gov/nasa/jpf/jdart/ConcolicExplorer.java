@@ -17,7 +17,7 @@ package gov.nasa.jpf.jdart;
 
 import gov.nasa.jpf.JPF;
 import gov.nasa.jpf.jdart.config.ConcolicConfig;
-import gov.nasa.jpf.jdart.constraints.ExplorationStrategy;
+import gov.nasa.jpf.jdart.exploration.ExplorationStrategy;
 import gov.nasa.jpf.jdart.termination.TerminationStrategy;
 import gov.nasa.jpf.util.JPFLogger;
 import gov.nasa.jpf.util.SimpleProfiler;
