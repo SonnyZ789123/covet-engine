@@ -6,7 +6,7 @@ import com.google.gson.reflect.TypeToken;
 import gov.nasa.jpf.JPF;
 import gov.nasa.jpf.constraints.api.Valuation;
 import gov.nasa.jpf.jdart.constraints.InternalConstraintsTree;
-import gov.nasa.jpf.jdart.constraints.coverage.pathcov.MethodInstructionCoverage;
+import gov.nasa.jpf.jdart.exploration.coverage.pathcov.MethodInstructionCoverage;
 import gov.nasa.jpf.jdart.constraints.tree.DecisionData;
 import gov.nasa.jpf.jdart.constraints.tree.Node;
 import gov.nasa.jpf.jdart.constraints.tree.NodeType;

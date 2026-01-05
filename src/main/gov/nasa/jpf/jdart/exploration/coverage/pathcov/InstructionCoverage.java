@@ -1,4 +1,4 @@
-package gov.nasa.jpf.jdart.constraints.coverage.pathcov;
+package gov.nasa.jpf.jdart.exploration.coverage.pathcov;
 
 import java.util.List;
 import java.util.Set;
