@@ -39,6 +39,10 @@ public final class DecisionData extends NodeData {
         return children;
     }
 
+    public Instruction getNextInstruction(int idx) {
+        return nextInstructions[idx].getInstruction();
+    }
+
     public Expression<Boolean> getConstraint(int idx) {
         return nextInstructions[idx].getConstraint();
     }
