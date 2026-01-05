@@ -273,6 +273,12 @@ public class InternalConstraintsTree {
     return currentNode;
   }
 
+  public void emptyExpectedPath() {
+    while (!expectedPath.isEmpty()) {
+      popExpectedPath();
+    }
+  }
+
   public void popExpectedPath() {
     solverCtx.pop();
     int removed = expectedPath.remove(expectedPath.size() - 1);

@@ -11,6 +11,8 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
 
     private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
 
+    public DFSExplorationStrategy() {}
+
     private Node descendDecisionNode(InternalConstraintsTree ctx, DecisionData decisionData) {
         int nextIdx = decisionData.nextOpenChild();
         assert nextIdx != -1; // because of backtrack condition should decisionData have at least one open child

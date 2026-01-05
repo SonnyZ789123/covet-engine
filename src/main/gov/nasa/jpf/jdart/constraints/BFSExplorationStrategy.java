@@ -1,0 +1,114 @@
+package gov.nasa.jpf.jdart.constraints;
+
+import gov.nasa.jpf.JPF;
+import gov.nasa.jpf.constraints.api.Valuation;
+import gov.nasa.jpf.jdart.constraints.tree.DecisionData;
+import gov.nasa.jpf.jdart.constraints.tree.Node;
+import gov.nasa.jpf.jdart.constraints.tree.NodeType;
+import gov.nasa.jpf.util.JPFLogger;
+import gov.nasa.jpf.vm.MethodInfo;
+
+import java.util.*;
+
+public class BFSExplorationStrategy implements ExplorationStrategy {
+    private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
+
+    private final Queue<Node> currentNodes;
+    private Node previousTargetedNode;
+
+    public BFSExplorationStrategy() {
+        currentNodes = new ArrayDeque<>();
+        previousTargetedNode = null;
+    }
+
+    private void addChildren(DecisionData decisionData) {
+        for (int i = 0; i < decisionData.getBranchWidth(); i++) {
+            Node childNode = decisionData.getOrCreateChild(i);
+            currentNodes.add(childNode);
+        }
+    }
+
+    private void addChildrenOfPreviousTargetedNode() {
+        if (previousTargetedNode == null) {
+            return;
+        }
+
+        DecisionData decisionData = previousTargetedNode.decisionData();
+        if (decisionData == null) {
+            return;
+        }
+
+        addChildren(decisionData);
+    }
+
+    private void constructExpectedPath(InternalConstraintsTree ctx, Node node) {
+        ctx.emptyExpectedPath();
+        Stack<DecisionData> decisionDataStack = new Stack<>();
+        Stack<Integer> indexStack = new Stack<>();
+
+        while (node.getParent() != null) {
+            Node parent = node.getParent();
+            DecisionData decisionData = parent.decisionData();
+
+            if (decisionData != null) {
+                for (int i = 0; i < decisionData.getBranchWidth(); i++) {
+                    if (decisionData.getChild(i) == node) {
+                        decisionDataStack.push(decisionData);
+                        indexStack.push(i);
+                        break;
+                    }
+                }
+            }
+
+            node = parent;
+        }
+
+        while (!decisionDataStack.isEmpty()) {
+            ctx.extendExpectedPath(decisionDataStack.pop(), indexStack.pop());
+        }
+    }
+
+    @Override
+    public Valuation findNext(InternalConstraintsTree ctx, MethodInfo methodInfo) {
+        debugLogger.finest("[findNext] entry -> expectedPath=" + ctx.expectedPath);
+
+        ctx.findNextInit();
+
+        ctx.emptyExpectedPath();
+
+        // Start of the concolic method execution
+        if (previousTargetedNode == null) {
+            currentNodes.add(ctx.getRoot());
+        }
+
+        addChildrenOfPreviousTargetedNode();
+
+        Node currentNode;
+        while (!currentNodes.isEmpty()) {
+            currentNode = currentNodes.poll();
+            DecisionData dec = currentNode.decisionData();
+
+            // ----- DECISION NODE -----
+            if (dec != null) {
+                addChildren(dec);
+            }
+
+            // ----- LEAF / VIRGIN NODE -----
+            if (currentNode.getDataType() == NodeType.VIRGIN) {
+                constructExpectedPath(ctx, currentNode);
+                Valuation val = ctx.solvePathOrMarkNode(currentNode);
+
+                if (val != null) {
+                    previousTargetedNode = currentNode;
+                    return val;
+                }
+            }
+
+            // Else already a solved node, continue
+        }
+
+        debugLogger.finest("[findNext] fallback to preset valuation");
+
+        return ctx.getPresetValues();
+    }
+}
