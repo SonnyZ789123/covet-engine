@@ -232,16 +232,8 @@ public class InternalConstraintsTree {
 
   public void findNextInit() {
     replay = false;
-    handleDivergence();
+    diverged = false;
     current = root;
-  }
-
-  public void handleDivergence() {
-    if (diverged) {
-      debugLogger.finest("[handleDivergence] divergence detected -> backtrack without pop");
-      current = backtrack(current, true, Node::isOpen);
-      diverged = false;
-    }
   }
 
   public boolean checkDepthLimit(Node node) {
@@ -249,7 +241,7 @@ public class InternalConstraintsTree {
     return anaConf.maxAltDepthExceeded(ad) || anaConf.maxDepthExceeded(node.getDepth());
   }
 
-  public Node backtrack(Node startNode, boolean handleDivergence, Predicate<Node> stopCondition) {
+  public Node backtrack(Node startNode, Predicate<Node> stopCondition) {
     if (startNode == null)
       return null;
 
@@ -260,10 +252,6 @@ public class InternalConstraintsTree {
       if (currentNode == null) {
         debugLogger.finest("[backtrackToOpenNode] reached root parent -> stop");
         break;
-      }
-
-      if (handleDivergence) {
-        continue;
       }
 
       popExpectedPath();
