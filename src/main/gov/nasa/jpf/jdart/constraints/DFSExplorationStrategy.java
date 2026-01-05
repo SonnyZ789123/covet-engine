@@ -23,11 +23,11 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
 
     @Override
     public Valuation findNext(InternalConstraintsTree ctx, MethodInfo methodInfo) {
-        debugLogger.finest("[findNext] entry -> expectedPath=" + ctx.expectedPath);
+        debugLogger.finest("[findNext] entry");
 
         ctx.findNextInit();
 
-        Node targetNode = ctx.currentTarget;
+        Node targetNode = ctx.getCurrentTarget();
         while ((targetNode = ctx.backtrack(targetNode, Node::isOpen)) != null) {
 
             DecisionData decisionData = targetNode.decisionData();
@@ -46,8 +46,6 @@ public class DFSExplorationStrategy implements ExplorationStrategy {
                 targetNode = descendDecisionNode(ctx, decisionData);
             }
         }
-
-        debugLogger.finest("[findNext] fallback to preset valuation");
 
         return ctx.getPresetValues();
     }

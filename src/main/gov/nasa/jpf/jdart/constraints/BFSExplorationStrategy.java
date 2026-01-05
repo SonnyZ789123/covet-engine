@@ -70,7 +70,7 @@ public class BFSExplorationStrategy implements ExplorationStrategy {
 
     @Override
     public Valuation findNext(InternalConstraintsTree ctx, MethodInfo methodInfo) {
-        debugLogger.finest("[findNext] entry -> expectedPath=" + ctx.expectedPath);
+        debugLogger.finest("[findNext] entry");
 
         ctx.findNextInit();
 
@@ -106,8 +106,6 @@ public class BFSExplorationStrategy implements ExplorationStrategy {
 
             // Else already a solved node, continue
         }
-
-        debugLogger.finest("[findNext] fallback to preset valuation");
 
         return ctx.getPresetValues();
     }
