@@ -32,7 +32,9 @@ public class ConcolicListener extends Perturbator {
   /**
    * logger
    */
-  private JPFLogger logger = JPF.getLogger("jdart");
+  private final JPFLogger logger = JPF.getLogger("jdart");
+
+  private final JPFLogger instructionLogger = JPF.getLogger("jdart.instructions");
   
   
   public ConcolicListener(Config conf) {
@@ -40,6 +42,12 @@ public class ConcolicListener extends Perturbator {
     logger.finest("ConcolicListener()");
   }
 
+  @Override
+  public void executeInstruction(VM vm, ThreadInfo ti, Instruction insnToExecute) {
+    instructionLogger.finest("[insn_index=" + insnToExecute.getInstructionIndex() + "] " + insnToExecute);
+
+    super.executeInstruction(vm, ti, insnToExecute);
+  }
 
   @Override
   public void propertyViolated(Search search) {

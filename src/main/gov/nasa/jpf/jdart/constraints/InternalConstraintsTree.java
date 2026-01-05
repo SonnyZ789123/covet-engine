@@ -289,6 +289,7 @@ public class InternalConstraintsTree {
     debugLogger.finest(
         "[extendExpectedPath] decision node descend -> branch " + branchIndex +
             ", constraint=" + constraint.toString() +
+            ", next_insn_index=" + decisionData.getNextInstruction(branchIndex).getInstructionIndex() +
             ", new expectedPath=" + expectedPath
     );
   }
