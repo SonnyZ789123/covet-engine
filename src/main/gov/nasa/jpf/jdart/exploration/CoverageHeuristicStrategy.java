@@ -6,11 +6,14 @@ import com.google.gson.reflect.TypeToken;
 import gov.nasa.jpf.JPF;
 import gov.nasa.jpf.constraints.api.Valuation;
 import gov.nasa.jpf.jdart.constraints.InternalConstraintsTree;
+import gov.nasa.jpf.jdart.exploration.coverage.WeightedNode;
+import gov.nasa.jpf.jdart.exploration.coverage.pathcov.InstructionCoverage;
 import gov.nasa.jpf.jdart.exploration.coverage.pathcov.MethodInstructionCoverage;
 import gov.nasa.jpf.jdart.constraints.tree.DecisionData;
 import gov.nasa.jpf.jdart.constraints.tree.Node;
 import gov.nasa.jpf.jdart.constraints.tree.NodeType;
 import gov.nasa.jpf.util.JPFLogger;
+import gov.nasa.jpf.vm.Instruction;
 import gov.nasa.jpf.vm.MethodInfo;
 
 import java.io.FileReader;
@@ -44,18 +47,35 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
         }
     }
 
-    private final Queue<Node> currentNodes;
+    private final Queue<WeightedNode> nodesFrontierQueue;
     private Node previousTargetedNode;
+    private InstructionCoverage currentInstructionCoverage;
 
     public CoverageHeuristicStrategy() {
-        currentNodes = new ArrayDeque<>();
+        // Initialize a priority queue: lower weight, and lower depth have higher priority
+        nodesFrontierQueue = new PriorityQueue<>(
+                Comparator.comparingDouble(WeightedNode::getWeight)
+                        .thenComparingInt(w -> w.getNode().getDepth())
+        );
         previousTargetedNode = null;
+    }
+
+    private double computeWeight(Instruction instruction) {
+        boolean instructionCovered = currentInstructionCoverage.isInstructionCovered(instruction.getInstructionIndex());
+        return instructionCovered ? 1 : 0;
     }
 
     private void addChildren(DecisionData decisionData) {
         for (int i = 0; i < decisionData.getBranchWidth(); i++) {
+            Instruction nextInstruction = decisionData.getNextInstruction(i);
+            double weight = 0;
+            if (nextInstruction != null) {
+                weight = computeWeight(nextInstruction);
+            }
+
             Node childNode = decisionData.getOrCreateChild(i);
-            currentNodes.add(childNode);
+            WeightedNode weightedChildNode = new WeightedNode(childNode, weight);
+            nodesFrontierQueue.add(weightedChildNode);
         }
     }
 
@@ -80,14 +100,17 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
 
         // Start of the concolic method execution
         if (previousTargetedNode == null) {
-            currentNodes.add(ctx.getRoot());
+            currentInstructionCoverage = methodInstructionCoverage.getInstructionCoverage(methodInfo.getFullName());
+            // Weight doesn't matter for root because it's always explored in the first run
+            nodesFrontierQueue.add(new WeightedNode(ctx.getRoot(), 0));
         }
 
         addChildrenOfPreviousTargetedNode();
 
-        Node currentNode;
-        while (!currentNodes.isEmpty()) {
-            currentNode = currentNodes.poll();
+        WeightedNode currentWeightedNode;
+        while (!nodesFrontierQueue.isEmpty()) {
+            currentWeightedNode = nodesFrontierQueue.poll();
+            Node currentNode = currentWeightedNode.getNode();
             DecisionData dec = currentNode.decisionData();
 
             // ----- DECISION NODE -----
