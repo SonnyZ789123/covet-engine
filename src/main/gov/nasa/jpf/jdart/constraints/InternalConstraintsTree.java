@@ -37,38 +37,38 @@ public class InternalConstraintsTree {
   private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
   
   
-  final Node root = new Node(null);
+  private final Node root = new Node(null);
   /** This is the current node in our EXPLORATION */
-  Node current = root;
+  private Node current = root;
   /**
    * This is the node that the concrete execution should reach by
    * the valuation computed by the constraint solver.
    * This should only be set by the decision(...) method, which is invoked during
    * concrete execution when a symbolic branch is encountered.
    */
-  Node currentTarget = root; // This is the node the valuation computed by the constraint solver SHOULD reach
+  private Node currentTarget = root; // This is the node the valuation computed by the constraint solver SHOULD reach
   
-  final AnalysisConfig anaConf;
+  private final AnalysisConfig anaConf;
 
   /** the expected path (list of branch indexes) through the constraints tree */
-  ArrayList<Integer> expectedPath = new ArrayList<>();
+  private final ArrayList<Integer> expectedPath = new ArrayList<>();
   /** whether we have diverged from the expected path */
-  boolean diverged = false;
+  private boolean diverged = false;
   /** the solver context used to check path condition satisfiability */
-  final SolverContext solverCtx;
+  private final SolverContext solverCtx;
   /**
    * Controls whether a branch creates new symbolic alternatives in the constraints tree.
    * If explore==false, we immediately mark all the child nodes as DONT_KNOW and set the num_open to 0.
    * */
-  boolean explore;
+  private boolean explore;
 
   /** Preset concolic values to be used when no new target can be found */
-  final ConcolicValues preset;
+  private final ConcolicValues preset;
   /** Whether we are currently replaying preset values, this means that we don't want to check for divergence  */
-  boolean replay = false;
+  private boolean replay = false;
 
   /** The previous valuation that was found by the constraint solver */
-  Valuation prev = null;
+  private Valuation prev = null;
   
   public InternalConstraintsTree(SolverContext solverCtx, AnalysisConfig anaConf) {
     this(solverCtx, anaConf, null);   
@@ -374,6 +374,10 @@ public class InternalConstraintsTree {
     }
 
     return null;
+  }
+
+  public Node getCurrentTarget() {
+    return currentTarget;
   }
 
   private void setCurrentTarget(Node target) {
