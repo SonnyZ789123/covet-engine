@@ -42,40 +42,11 @@ public class BFSStrategy implements ExplorationStrategy {
         addChildren(decisionData);
     }
 
-    private void constructExpectedPath(InternalConstraintsTree ctx, Node node) {
-        ctx.emptyExpectedPath();
-        Stack<DecisionData> decisionDataStack = new Stack<>();
-        Stack<Integer> indexStack = new Stack<>();
-
-        while (node.getParent() != null) {
-            Node parent = node.getParent();
-            DecisionData decisionData = parent.decisionData();
-
-            if (decisionData != null) {
-                for (int i = 0; i < decisionData.getBranchWidth(); i++) {
-                    if (decisionData.getChild(i) == node) {
-                        decisionDataStack.push(decisionData);
-                        indexStack.push(i);
-                        break;
-                    }
-                }
-            }
-
-            node = parent;
-        }
-
-        while (!decisionDataStack.isEmpty()) {
-            ctx.extendExpectedPath(decisionDataStack.pop(), indexStack.pop());
-        }
-    }
-
     @Override
     public Valuation findNext(InternalConstraintsTree ctx, MethodInfo methodInfo) {
         debugLogger.finest("[findNext] entry");
 
         ctx.findNextInit();
-
-        ctx.emptyExpectedPath();
 
         // Start of the concolic method execution
         if (previousTargetedNode == null) {
@@ -96,7 +67,7 @@ public class BFSStrategy implements ExplorationStrategy {
 
             // ----- LEAF / VIRGIN NODE -----
             if (currentNode.getDataType() == NodeType.VIRGIN) {
-                constructExpectedPath(ctx, currentNode);
+                ctx.constructExpectedPath(currentNode);
                 Valuation val = ctx.solvePathOrMarkNode(currentNode);
 
                 if (val != null) {
