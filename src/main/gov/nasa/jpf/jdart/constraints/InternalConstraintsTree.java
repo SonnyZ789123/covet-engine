@@ -293,6 +293,33 @@ public class InternalConstraintsTree {
     );
   }
 
+  public void constructExpectedPath(Node node) {
+    emptyExpectedPath();
+    Stack<DecisionData> decisionDataStack = new Stack<>();
+    Stack<Integer> indexStack = new Stack<>();
+
+    while (node.getParent() != null) {
+      Node parent = node.getParent();
+      DecisionData decisionData = parent.decisionData();
+
+      if (decisionData != null) {
+        for (int i = 0; i < decisionData.getBranchWidth(); i++) {
+          if (decisionData.getChild(i) == node) {
+            decisionDataStack.push(decisionData);
+            indexStack.push(i);
+            break;
+          }
+        }
+      }
+
+      node = parent;
+    }
+
+    while (!decisionDataStack.isEmpty()) {
+      extendExpectedPath(decisionDataStack.pop(), indexStack.pop());
+    }
+  }
+
   public SolverContextSolveResult solveCurrentPath() {
     logger.finer("Finding new valuation");
     Valuation val = new Valuation();
