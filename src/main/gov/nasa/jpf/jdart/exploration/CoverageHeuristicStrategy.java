@@ -24,7 +24,6 @@ import java.util.*;
 public class CoverageHeuristicStrategy implements ExplorationStrategy {
     private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
 
-    // TODO: use heuristic
     private static final MethodInstructionCoverage methodInstructionCoverage;
 
     static {
@@ -43,13 +42,12 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
 
             reader.close();
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to initialize CoverageHeuristicStrategy: " + e);
         }
     }
 
     private final Queue<WeightedNode> nodesFrontierQueue;
     private Node previousTargetedNode;
-    private InstructionCoverage currentInstructionCoverage;
 
     public CoverageHeuristicStrategy() {
         // Initialize a priority queue: lower weight, and lower depth have higher priority
@@ -61,6 +59,8 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
     }
 
     private double computeWeight(Instruction instruction) {
+        InstructionCoverage currentInstructionCoverage =
+                methodInstructionCoverage.getInstructionCoverage(instruction.getMethodInfo().getFullName());
         boolean instructionCovered = currentInstructionCoverage.isInstructionCovered(instruction.getInstructionIndex());
         return instructionCovered ? 1 : 0;
     }
@@ -100,7 +100,6 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
 
         // Start of the concolic method execution
         if (previousTargetedNode == null) {
-            currentInstructionCoverage = methodInstructionCoverage.getInstructionCoverage(methodInfo.getFullName());
             // Weight doesn't matter for root because it's always explored in the first run
             nodesFrontierQueue.add(new WeightedNode(ctx.getRoot(), 0));
         }

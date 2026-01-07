@@ -6,13 +6,11 @@ import java.util.Set;
 import static java.util.Collections.emptyList;
 
 public class InstructionCoverage {
-    private final String method;
-    private final List<int[]> instructionPaths;
+    private final String methodFullName;
     private final Set<Integer> coveredInstructions;
 
     public InstructionCoverage(String methodFullName, List<int[]> instructionPaths) {
-        this.method = methodFullName;
-        this.instructionPaths = instructionPaths;
+        this.methodFullName = methodFullName;
         this.coveredInstructions = new java.util.HashSet<>();
         instructionPaths.forEach(path -> {
             for (int instr : path) {
