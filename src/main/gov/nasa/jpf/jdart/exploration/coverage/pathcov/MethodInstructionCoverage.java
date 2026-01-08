@@ -1,5 +1,6 @@
 package gov.nasa.jpf.jdart.exploration.coverage.pathcov;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -9,7 +10,7 @@ public final class MethodInstructionCoverage {
     private final Map<String, InstructionCoverage> instructionCoverageByMethod;
 
     public MethodInstructionCoverage(Map<String, List<int[]>> instructionPathsByMethod) {
-        this.instructionCoverageByMethod = new java.util.HashMap<>();
+        this.instructionCoverageByMethod = new HashMap<>();
         for (Map.Entry<String, List<int[]>> entry : instructionPathsByMethod.entrySet()) {
             String methodFullName = entry.getKey();
             List<int[]> instructionPaths = entry.getValue();
