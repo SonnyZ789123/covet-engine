@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 
 public final class MethodInstructionCoverage {
+    private static final InstructionCoverage EMPTY = InstructionCoverage.empty("<no-method>");
+
     private final Map<String, InstructionCoverage> instructionCoverageByMethod;
 
     public MethodInstructionCoverage(Map<String, List<int[]>> instructionPathsByMethod) {
@@ -17,6 +19,7 @@ public final class MethodInstructionCoverage {
     }
 
     public InstructionCoverage getInstructionCoverage(String methodFullName) {
-        return instructionCoverageByMethod.getOrDefault(methodFullName, InstructionCoverage.empty(methodFullName));
+        InstructionCoverage cov = instructionCoverageByMethod.get(methodFullName);
+        return cov != null ? cov : EMPTY;
     }
 }
