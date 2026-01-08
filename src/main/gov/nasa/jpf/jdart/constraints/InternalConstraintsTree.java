@@ -16,7 +16,6 @@
 package gov.nasa.jpf.jdart.constraints;
 
 import gov.nasa.jpf.JPF;
-import gov.nasa.jpf.constraints.api.ConstraintSolver;
 import gov.nasa.jpf.constraints.api.Expression;
 import gov.nasa.jpf.constraints.api.SolverContext;
 import gov.nasa.jpf.constraints.api.Valuation;
@@ -50,12 +49,13 @@ public class InternalConstraintsTree {
   
   private final AnalysisConfig anaConf;
 
-  /** the expected path (list of branch indexes) through the constraints tree */
-  private final ArrayList<Integer> expectedPath = new ArrayList<>();
   /** whether we have diverged from the expected path */
   private boolean diverged = false;
-  /** the solver context used to check path condition satisfiability */
-  private final SolverContext solverCtx;
+  /**
+   * The constraints path helper for managing the expected path and solver context
+   */
+  private final ConstraintsPath constraintsPath;
+
   /**
    * Controls whether a branch creates new symbolic alternatives in the constraints tree.
    * If explore==false, we immediately mark all the child nodes as DONT_KNOW and set the num_open to 0.
@@ -75,10 +75,10 @@ public class InternalConstraintsTree {
   }
 
   public InternalConstraintsTree(SolverContext solverCtx, AnalysisConfig anaConf, ConcolicValues preset) {
-    this.solverCtx = solverCtx;
     this.anaConf = anaConf;
     this.explore = anaConf.isExploreInitially();
     this.preset = preset;
+    this.constraintsPath = new ConstraintsPath(solverCtx);
   }
 
   /**
@@ -135,38 +135,6 @@ public class InternalConstraintsTree {
    *   <li>Detect divergence between concrete execution and the expected symbolic path.</li>
    * </ul>
    *
-   * <p><b>Symbolic path tracking:</b></p>
-   * <ul>
-   *   <li>If the current execution depth is smaller than {@code expectedPath.size()},
-   *       this execution is considered a <em>replay</em> of an existing symbolic path.
-   *       The chosen branch must match the previously recorded branch index.</li>
-   *   <li>If the depth equals {@code expectedPath.size()}, a new symbolic decision
-   *       is discovered. The corresponding constraint is pushed to the solver,
-   *       and the branch index is appended to {@code expectedPath}.</li>
-   * </ul>
-   *
-   * <p><b>Divergence handling:</b></p>
-   * <ul>
-   *   <li>If the concrete branch differs from the expected branch during replay,
-   *       {@code diverged} is set and {@link BranchEffect#UNEXPECTED} is returned.</li>
-   *   <li>If the execution reaches an exhausted subtree (and not in {@code replay} mode),
-   *       {@code diverged} is set and {@link BranchEffect#INCONCLUSIVE} is returned.</li>
-   * </ul>
-   *
-   * <p><b>Solver state effects:</b></p>
-   * <ul>
-   *   <li>On discovering a new symbolic decision, {@link SolverContext#push()} is called
-   *       and the selected branch constraint is added.</li>
-   *   <li>No solver state is popped in this method; cleanup is handled by backtracking.</li>
-   * </ul>
-   *
-   * <p><b>Modes:</b></p>
-   * <ul>
-   *   <li>{@code explore = true}: alternative branches are opened and explored symbolically.</li>
-   *   <li>{@code explore = false}: branches are executed concretely but marked as {@code dontKnow}.</li>
-   *   <li>{@code replay = true}: divergence is tolerated because inputs originate from preset values.</li>
-   * </ul>
-   *
    * @param insn
    *   the branching bytecode instruction being executed
    * @param branchIdx
@@ -186,7 +154,7 @@ public class InternalConstraintsTree {
     debugLogger.finest("[decision] insn=" + insn,
             ", branchIdx=" + branchIdx +
             ", current node depth=" + current.getDepth() +
-            ", expectedPath=" + expectedPath);
+            ", expectedPath=" + constraintsPath.getExpectedPath());
     if(anaConf.maxDepthExceeded(current.getDepth())) {
       //System.err.println("DEPTH EXCEEDED");
       return BranchEffect.NORMAL; // just ignore it
@@ -210,10 +178,9 @@ public class InternalConstraintsTree {
     }
     
     if (!diverged) {
-
-      if(depth < expectedPath.size()) {
-        int expected = expectedPath.get(depth);
-        debugLogger.finest("[verifyPath] expected=" + expected + ", branchIdx=" + branchIdx +
+      if (depth < currentTarget.getDepth()) {
+        int expected = constraintsPath.getExpectedPath().get(depth);
+        debugLogger.finest("[decision] expected=" + expected + ", branchIdx=" + branchIdx +
                 (expected == branchIdx ? "" : " -> DIVERGENCE"));
 
         if(expected != branchIdx) {
@@ -221,7 +188,7 @@ public class InternalConstraintsTree {
           return BranchEffect.UNEXPECTED;
         }
       } else {
-        extendExpectedPath(data, branchIdx);
+        constraintsPath.extendExpectedPath(data, branchIdx);
         // Set current target to later be used for finding next node to explore
         setCurrentTarget(current);
       }
@@ -242,88 +209,15 @@ public class InternalConstraintsTree {
   }
 
   public Node backtrack(Node startNode, Predicate<Node> stopCondition) {
-    debugLogger.finest("[backtrack] from expectedPath=" + expectedPath);
-    if (startNode == null)
-      return null;
-
-    Node currentNode = startNode;
-    while (!stopCondition.isTrue(currentNode)) {
-      currentNode = currentNode.getParent();
-
-      if (currentNode == null) {
-        debugLogger.finest("[backtrack] reached root parent -> stop");
-        break;
-      }
-
-      popExpectedPath();
-    }
-
-    debugLogger.finest("[bracktrack] new expectedPath=" + expectedPath);
-    return currentNode;
-  }
-
-  public void emptyExpectedPath() {
-    while (!expectedPath.isEmpty()) {
-      popExpectedPath();
-    }
-  }
-
-  public void popExpectedPath() {
-    solverCtx.pop();
-    int removed = expectedPath.remove(expectedPath.size() - 1);
-    debugLogger.finest("[popExpectedPath] removed branch " + removed);
-  }
-
-  public void extendExpectedPath(DecisionData decisionData, int branchIndex) {
-    Expression<Boolean> constraint = decisionData.getConstraint(branchIndex);
-
-    solverCtx.push();
-
-    try {
-      solverCtx.add(constraint);
-    } catch(RuntimeException ex) {
-      logger.finer(ex.getMessage());
-    }
-    expectedPath.add(branchIndex);
-
-    debugLogger.finest(
-        "[extendExpectedPath] extend path, branchIdx=" + branchIndex +
-            ", constraint=" + constraint.toString());
+    return constraintsPath.backtrack(startNode, stopCondition);
   }
 
   public void constructExpectedPath(Node node) {
-    emptyExpectedPath();
-    Stack<DecisionData> decisionDataStack = new Stack<>();
-    Stack<Integer> indexStack = new Stack<>();
-
-    while (node.getParent() != null) {
-      Node parent = node.getParent();
-      DecisionData decisionData = parent.decisionData();
-
-      if (decisionData != null) {
-        for (int i = 0; i < decisionData.getBranchWidth(); i++) {
-          if (decisionData.getChild(i) == node) {
-            decisionDataStack.push(decisionData);
-            indexStack.push(i);
-            break;
-          }
-        }
-      }
-
-      node = parent;
-    }
-
-    while (!decisionDataStack.isEmpty()) {
-      extendExpectedPath(decisionDataStack.pop(), indexStack.pop());
-    }
+    constraintsPath.constructExpectedPath(node);
   }
 
-  public SolverContextSolveResult solveCurrentPath() {
-    logger.finer("Finding new valuation");
-    Valuation val = new Valuation();
-    ConstraintSolver.Result res = solverCtx.solve(val);
-    logger.finer("Found: " + res + " : " + val);
-    return new SolverContextSolveResult(val, res);
+  public void extendExpectedPath(DecisionData decisionData, int branchIndex) {
+    constraintsPath.extendExpectedPath(decisionData, branchIndex);
   }
 
   /**
@@ -343,7 +237,7 @@ public class InternalConstraintsTree {
       node.markDontKnowNode();
     }
 
-    SolverContextSolveResult solveRes = solveCurrentPath();
+    SolverContextSolveResult solveRes = constraintsPath.solveCurrentPath();
     Valuation val = solveRes.val;
 
     if (val.equals(prev)) {
@@ -353,7 +247,7 @@ public class InternalConstraintsTree {
     }
 
     debugLogger.finest("[solvePathOrMarkNode] solve result=" +
-            solveRes.result + "->" + val + ", for expectedPath=" + expectedPath);
+            solveRes.result + "->" + val + ", for expectedPath=" + constraintsPath.getExpectedPath());
 
     switch (solveRes.result) {
       case UNSAT:
@@ -391,7 +285,6 @@ public class InternalConstraintsTree {
     //node from exercising the constraints tree
     if (preset != null && preset.hasNext()) {
       current = root;
-      assert expectedPath.isEmpty();
       replay = true;
 
       return preset.next();
