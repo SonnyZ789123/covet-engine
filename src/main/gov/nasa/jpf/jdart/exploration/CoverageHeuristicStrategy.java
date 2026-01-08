@@ -48,6 +48,8 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
 
     private final Queue<WeightedNode> nodesFrontierQueue;
     private Node previousTargetedNode;
+    private final Map<MethodInfo, InstructionCoverage> coverageCache = new IdentityHashMap<>();
+
 
     public CoverageHeuristicStrategy() {
         // Initialize a priority queue: lower weight, and lower depth have higher priority
@@ -59,19 +61,19 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
     }
 
     private double computeWeight(Instruction instruction) {
-        InstructionCoverage currentInstructionCoverage =
-                methodInstructionCoverage.getInstructionCoverage(instruction.getMethodInfo().getFullName());
-        boolean instructionCovered = currentInstructionCoverage.isInstructionCovered(instruction.getInstructionIndex());
-        return instructionCovered ? 1 : 0;
+        MethodInfo mi = instruction.getMethodInfo();
+        InstructionCoverage cov = coverageCache.computeIfAbsent(mi,
+                m -> methodInstructionCoverage.getInstructionCoverage(m.getFullName())
+        );
+
+        return cov.isInstructionCovered(instruction.getInstructionIndex()) ? 1 : 0;
     }
+
 
     private void addChildren(DecisionData decisionData) {
         for (int i = 0; i < decisionData.getBranchWidth(); i++) {
             Instruction nextInstruction = decisionData.getNextInstruction(i);
-            double weight = 0;
-            if (nextInstruction != null) {
-                weight = computeWeight(nextInstruction);
-            }
+            double weight = nextInstruction == null ? 0 : computeWeight(nextInstruction);
 
             Node childNode = decisionData.getOrCreateChild(i);
             WeightedNode weightedChildNode = new WeightedNode(childNode, weight);
