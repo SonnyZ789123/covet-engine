@@ -44,7 +44,7 @@ public class BFSStrategy implements ExplorationStrategy {
 
     @Override
     public Valuation findNext(InternalConstraintsTree ctx, MethodInfo methodInfo) {
-        debugLogger.finest("[findNext] entry");
+        debugLogger.finest("[findNext] ================ finding next path ================");
 
         ctx.findNextInit();
 

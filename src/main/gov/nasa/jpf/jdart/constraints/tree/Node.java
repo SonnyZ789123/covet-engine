@@ -1,8 +1,6 @@
 package gov.nasa.jpf.jdart.constraints.tree;
 
-import gov.nasa.jpf.JPF;
 import gov.nasa.jpf.jdart.constraints.PathResult;
-import gov.nasa.jpf.util.JPFLogger;
 import gov.nasa.jpf.vm.Instruction;
 
 public final class Node {
@@ -13,8 +11,6 @@ public final class Node {
 
     private NodeData data;
     private NodeType dataType;
-
-    private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
 
     public Node(Node parent) {
         this.parent = parent;
@@ -134,17 +130,11 @@ public final class Node {
             // which decremented the numOpen count. So for analysis, we don't care anymore what happens from this
             // decision point.
             // Don't propagate further! We only want to decrement the parent once when !hasOpen().
-            debugLogger.finest("[decrementOpenChildren] tried to decrement when numOpen=" + dec.getNumOpen() +
-                    " at depth=" + depth);
             return;
         }
         dec.decrementOpen();
-        debugLogger.finest("[decrementOpenChildren] decremented open children, numOpen=" + dec.getNumOpen() +
-                " at depth=" + depth);
 
         if (decrementExhausted) {
-            debugLogger.finest("[decrementOpenChildren] decremented unexhausted children, numUnexhausted=" +
-                    dec.getNumUnexhausted() + " at depth=" + depth);
             dec.decrementUnexhausted();
         }
 

@@ -80,8 +80,6 @@ public class ConcolicMethodExplorer {
    */
   private final JPFLogger logger = JPF.getLogger("jdart");
 
-  private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
-  
   /**
    * explored method
    */
@@ -204,17 +202,14 @@ public class ConcolicMethodExplorer {
   public boolean hasMoreChoices() {
     // Before first execution
     if (initValuation == null) {
-      debugLogger.finest("[hasMoreChoices] before first execution -> true");
       return true;
     }
 
     // Compute next valuation if needed
     if (nextValuation == null) {
       nextValuation = explorationStrategy.findNext(constraintsTree, methodInfo);
-      debugLogger.finest("[hasMoreChoices] findNext() -> " + (nextValuation == null ? "null (no more paths)" : "valuation found"));
     }
 
-    debugLogger.finest("[hasMoreChoices] has more choices -> " + (nextValuation != null));
     return nextValuation != null;
   }
 
@@ -223,13 +218,11 @@ public class ConcolicMethodExplorer {
     // Ensure a next valuation exists
     if (nextValuation == null) {
       nextValuation = explorationStrategy.findNext(constraintsTree, methodInfo);
-      debugLogger.finest("[advanceValuation] findNext() -> " + (nextValuation == null ? "null (cannot advance)" : "valuation found"));
     }
 
     if (nextValuation != null) {
       for (Variable v : currValuation.getVariables()) {
         if (!nextValuation.containsValueFor(v)) {
-          debugLogger.finest("[advanceValuation] inserting default for variable: " + v.getName());
           nextValuation.addEntry(
                   new ValuationEntry(v, nextValuation.getValue(v))
           );
@@ -239,8 +232,6 @@ public class ConcolicMethodExplorer {
     currValuation = nextValuation;
     nextValuation = null;
 
-    debugLogger.finest("[advanceValuation] new valuation -> " + currValuation.toString());
-
     return currValuation != null;
   }
 
@@ -248,10 +239,6 @@ public class ConcolicMethodExplorer {
   /**
    * registers method for concolic execution. Puts symbolic input values onto
    * the stack ...
-   * 
-   * @param invokeInstruction
-   * @param systemState
-   * @param ti 
    */
   public void initializeMethod(ThreadInfo ti, StackFrame sf) {
     logger.finest("Initializing concolic execution of " + methodInfo.getFullName());
@@ -369,7 +356,7 @@ public class ConcolicMethodExplorer {
   }
   
   public void prepareReexecution(StackFrame sf) {
-    logger.finest("Reexecuting with valuation " + currValuation);
+    logger.finest("\n\n>>>>>>>>>>>>>>>> Reexecuting with valuation " + currValuation);
     for(SymbolicVariable<?> sv : symContext.getSymbolicVars())
       sv.apply(currValuation, sf);
   }

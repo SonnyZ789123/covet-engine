@@ -183,7 +183,7 @@ public class InternalConstraintsTree {
           Instruction insn,
           int branchIdx,
           InstructionBranch[] nextInstructions) {
-    debugLogger.finest("[decision] entry -> insn=" + insn,
+    debugLogger.finest("[decision] insn=" + insn,
             ", branchIdx=" + branchIdx +
             ", current node depth=" + current.getDepth() +
             ", expectedPath=" + expectedPath);
@@ -209,18 +209,18 @@ public class InternalConstraintsTree {
       return BranchEffect.INCONCLUSIVE;
     }
     
-    if(!diverged) {
+    if (!diverged) {
+
       if(depth < expectedPath.size()) {
-        int expected = expectedPath.get(depth).intValue();
-        debugLogger.finest("[decision] node depth < expected path size -> checking if expected branch " +
-                expected + " == " + branchIdx);
+        int expected = expectedPath.get(depth);
+        debugLogger.finest("[verifyPath] expected=" + expected + ", branchIdx=" + branchIdx +
+                (expected == branchIdx ? "" : " -> DIVERGENCE"));
+
         if(expected != branchIdx) {
-            diverged = true;
-            return BranchEffect.UNEXPECTED;
-          } 
-      }
-      else {
-        debugLogger.finest("[decision] insn=" + insn + ", adding constraint");
+          diverged = true;
+          return BranchEffect.UNEXPECTED;
+        }
+      } else {
         extendExpectedPath(data, branchIdx);
         // Set current target to later be used for finding next node to explore
         setCurrentTarget(current);
@@ -242,6 +242,7 @@ public class InternalConstraintsTree {
   }
 
   public Node backtrack(Node startNode, Predicate<Node> stopCondition) {
+    debugLogger.finest("[backtrack] from expectedPath=" + expectedPath);
     if (startNode == null)
       return null;
 
@@ -250,14 +251,14 @@ public class InternalConstraintsTree {
       currentNode = currentNode.getParent();
 
       if (currentNode == null) {
-        debugLogger.finest("[backtrackToOpenNode] reached root parent -> stop");
+        debugLogger.finest("[backtrack] reached root parent -> stop");
         break;
       }
 
       popExpectedPath();
     }
 
-    debugLogger.finest("[backtrackToOpenNode] new expectedPath=" + expectedPath);
+    debugLogger.finest("[bracktrack] new expectedPath=" + expectedPath);
     return currentNode;
   }
 
@@ -270,8 +271,7 @@ public class InternalConstraintsTree {
   public void popExpectedPath() {
     solverCtx.pop();
     int removed = expectedPath.remove(expectedPath.size() - 1);
-    debugLogger.finest("[popExpectedPath] pop -> removed branch " + removed +
-            ", new expectedPath=" + expectedPath);
+    debugLogger.finest("[popExpectedPath] removed branch " + removed);
   }
 
   public void extendExpectedPath(DecisionData decisionData, int branchIndex) {
@@ -287,11 +287,8 @@ public class InternalConstraintsTree {
     expectedPath.add(branchIndex);
 
     debugLogger.finest(
-        "[extendExpectedPath] decision node descend -> branch " + branchIndex +
-            ", constraint=" + constraint.toString() +
-            ", next_insn_index=" + decisionData.getNextInstruction(branchIndex).getInstructionIndex() +
-            ", new expectedPath=" + expectedPath
-    );
+        "[extendExpectedPath] extend path, branchIdx=" + branchIndex +
+            ", constraint=" + constraint.toString());
   }
 
   public void constructExpectedPath(Node node) {
@@ -350,21 +347,21 @@ public class InternalConstraintsTree {
     Valuation val = solveRes.val;
 
     if (val.equals(prev)) {
-      debugLogger.finest("[solvePathForVirginNode] duplicate valuation -> skip");
-      logger.finer("Wont re-execute with known valuation");
+      debugLogger.finest("[solvePathOrMarkNode] duplicate valuation -> skip");
       node.markDontKnowNode();
       return null;
     }
 
+    debugLogger.finest("[solvePathOrMarkNode] solve result=" +
+            solveRes.result + "->" + val + ", for expectedPath=" + expectedPath);
+
     switch (solveRes.result) {
       case UNSAT:
         node.markUnsatisfiableNode();
-        debugLogger.finest("[solvePathOrMarkNode] solve -> UNSAT");
         break;
 
       case DONT_KNOW:
         node.markDontKnowNode();
-        debugLogger.finest("[solvePathOrMarkNode] solve -> DONT_KNOW");
         break;
 
       case SAT:
@@ -372,6 +369,8 @@ public class InternalConstraintsTree {
         if (predictedTarget != null && predictedTarget != node) {
           boolean inconclusive = predictedTarget.isExhausted();
           logger.info("Predicted ", inconclusive ? "inconclusive " : "", "divergence");
+
+          // Still want to continue execution if node is not exhausted, execution could be useful
           if (inconclusive) {
             logger.finer("inconclusive -> NOT attempting execution");
             node.markDontKnowNode();
@@ -380,9 +379,6 @@ public class InternalConstraintsTree {
         }
 
         prev = val;
-        debugLogger.finest("[solvePathOrMarkNode] SAT -> returning valuation " + val +
-            " , expectedPath=" + expectedPath);
-
         return ExpressionUtil.combineValuations(val);
     }
     return null;
