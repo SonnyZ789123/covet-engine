@@ -93,8 +93,8 @@ import java.util.List;
  * <ul>
  *   <li>If neither {@code .values} nor {@code .valfile} is provided, all method
  *       parameters are treated as symbolic.</li>
- *   <li>The method {@code &lt;id&gt;} is used to generate JPF perturbation keys
- *       (e.g. {@code perturb.&lt;id&gt;.*}) and to group completed analyses.</li>
+ *   <li>The method {@code <id>} is used to generate JPF perturbation keys
+ *       (e.g. {@code perturb.<id>.*}) and to group completed analyses.</li>
  *   <li>Validation of method specifications and value formats is delegated to
  *       {@link MethodSpec} and {@link ConcolicValues} implementations.</li>
  * </ul>
