@@ -54,8 +54,7 @@ public class ConcolicConfig {
   
   protected final AnalysisConfig globalConfig = new AnalysisConfig();
   
-  private final Map<String,ConcolicMethodConfig> concolicMethods
-    = new HashMap<>();
+  private final Map<String, ConcolicMethodConfig> concolicMethods = new HashMap<>();
   
     
   /**
@@ -68,9 +67,6 @@ public class ConcolicConfig {
    */
   private ExplorationStrategy explorationStrategy;
 
-  public ConcolicConfig() {
-    
-  }
 
   /**
    *
@@ -99,8 +95,7 @@ public class ConcolicConfig {
    * @return 
    */
   public ConcolicMethodConfig getMethodConfig(String id) {
-    ConcolicMethodConfig mc = concolicMethods.get(id);
-    return mc;
+    return concolicMethods.get(id);
   }
   
   public Collection<ConcolicMethodConfig> getMethodConfigs() {
@@ -185,16 +180,16 @@ public class ConcolicConfig {
   }
   
   public void addConcolicMethod(String id, MethodSpec methodSpec, AnalysisConfig ac) {
-    if(ac == null)
+    if (ac == null)
       ac = globalConfig;
     ConcolicMethodConfig cm = ConcolicMethodConfig.create(id, methodSpec, ac);
     registerConcolicMethod(cm);
   }
-  
+
   public void addConcolicMethod(String id, String className, String methodName, AnalysisConfig ac, ParamConfig ...params) {
     addConcolicMethod(id, new MethodSpec(className, methodName, params), ac);
   }
-  
+
   public void addConcolicMethod(String id, String methodSpec, AnalysisConfig ac) {
     addConcolicMethod(id, MethodSpec.parse(methodSpec), ac);
   }
@@ -234,14 +229,14 @@ public class ConcolicConfig {
     this.explorationStrategy = parseExplorationStrategy(conf);
   }
   
-  public static TerminationStrategy parseTerminationStrategy(Config conf) {
+  private static TerminationStrategy parseTerminationStrategy(Config conf) {
     if (!conf.hasValue("jdart.termination")) {
       return new NeverTerminate();     
     }
     return parseTerminationStrategy(conf.getProperty("jdart.termination"));
   }
     
-  public static TerminationStrategy parseTerminationStrategy(String line) {
+  private static TerminationStrategy parseTerminationStrategy(String line) {
     try {
       String[] opt = line.split("\\,");
       Class clazz = Class.forName(opt[0].trim());
@@ -270,7 +265,7 @@ public class ConcolicConfig {
     return new NeverTerminate();
   }
 
-  public static ExplorationStrategy parseExplorationStrategy(Config conf) {
+  private static ExplorationStrategy parseExplorationStrategy(Config conf) {
     if (!conf.hasValue("jdart.exploration.strategy.class")) {
       return new DFSStrategy();
     }

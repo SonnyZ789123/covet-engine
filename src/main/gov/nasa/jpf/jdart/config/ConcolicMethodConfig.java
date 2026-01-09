@@ -21,12 +21,97 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * method configuration
+ * Configuration for a single concolic (symbolic) method.
+ *
+ * <p>A {@code ConcolicMethodConfig} is created from properties in the JPF
+ * configuration file using a method-specific prefix:
+ *
+ * <pre>
+ *   concolic.method.&lt;id&gt;
+ * </pre>
+ *
+ * where {@code <id>} is an arbitrary identifier (e.g. {@code foo}) used to
+ * reference this method throughout JDart.
+ *
+ * <h2>Supported Configuration Properties</h2>
+ *
+ * <ul>
+ *   <li><b>{@code concolic.method.<id>}</b><br>
+ *       Type: {@code String}<br>
+ *       Required: yes<br>
+ *       Meaning: Method specification identifying the symbolic entry point.<br>
+ *       Format:
+ *       <pre>
+ *         fully.qualified.Class.method(paramName:type,paramName:type,...)
+ *       </pre>
+ *       Example:
+ *       <pre>
+ *         concolic.method.foo = gov.nasa.jpf.MyClass.foo(c:char[], i:int)
+ *       </pre>
+ *   </li>
+ *
+ *   <li><b>{@code concolic.method.<id>.location}</b><br>
+ *       Type: {@code String}<br>
+ *       Required: no<br>
+ *       Meaning: Optional bytecode or source location qualifier restricting
+ *       where perturbation is applied.<br>
+ *       Default: {@code null} (no restriction)
+ *   </li>
+ *
+ *   <li><b>{@code concolic.method.<id>.config}</b><br>
+ *       Type: {@code String}<br>
+ *       Required: no<br>
+ *       Meaning: Identifier of the {@link AnalysisConfig} block associated with
+ *       this method.<br>
+ *       Resolution:
+ *       <pre>
+ *         jdart.configs.&lt;configId&gt;.*
+ *       </pre>
+ *       If omitted, the analysis configuration defaults are used.
+ *   </li>
+ *
+ *   <li><b>{@code concolic.method.<id>.values}</b><br>
+ *       Type: {@code String}<br>
+ *       Required: no<br>
+ *       Meaning: Inline specification of initial concrete values or domains for
+ *       method parameters.<br>
+ *       Parsed by {@link ConcolicValuesFromConfig}.<br>
+ *       Default: fully symbolic inputs
+ *   </li>
+ *
+ *   <li><b>{@code concolic.method.<id>.valfile}</b><br>
+ *       Type: {@code String} (file path)<br>
+ *       Required: no<br>
+ *       Meaning: Load concrete input values from an external file.<br>
+ *       Parsed by {@link ConcolicValuesFromFile}.<br>
+ *       Priority: Overrides {@code .values} if both are present.
+ *   </li>
+ * </ul>
+ *
+ * <h2>Notes</h2>
+ *
+ * <ul>
+ *   <li>If neither {@code .values} nor {@code .valfile} is provided, all method
+ *       parameters are treated as symbolic.</li>
+ *   <li>The method {@code &lt;id&gt;} is used to generate JPF perturbation keys
+ *       (e.g. {@code perturb.&lt;id&gt;.*}) and to group completed analyses.</li>
+ *   <li>Validation of method specifications and value formats is delegated to
+ *       {@link MethodSpec} and {@link ConcolicValues} implementations.</li>
+ * </ul>
  */
 public class ConcolicMethodConfig {
-  
+
+  /**
+   * Reads a method configuration from the given config
+   *
+   * @param id The identifier (e.g., "foo") for this method config
+   * @param prefix The prefix in the .jpf config file (e.g., "concolic.method.foo")
+   * @param config The .jpf config to read from
+   * @return the method configuration
+   */
   public static ConcolicMethodConfig read(String id, String prefix, Config config) {
     String methodSpec = config.getProperty(prefix);
+    // methodSpec is something like concolic.method.foo=gov.nasa.jpf.MyClass.foo(c:char[],i:int)
     MethodSpec ms = MethodSpec.parse(methodSpec);
     
     String location = config.getProperty(prefix + ".location");
@@ -45,11 +130,6 @@ public class ConcolicMethodConfig {
     
     return new ConcolicMethodConfig(id, ms, location, ac, values);
   }
-  
-//
-//  public static ConcolicMethodConfig create(String id, MethodSpec methodSpec) {
-//    return new ConcolicMethodConfig(null, null, id, methodSpec, null, null);
-//  }
   
   private final String id;
   private MethodSpec methodSpec;
@@ -141,8 +221,7 @@ public class ConcolicMethodConfig {
     } 
   }
 
-  public static ConcolicMethodConfig create(String id, MethodSpec methodSpec,
-      AnalysisConfig ac) {
+  public static ConcolicMethodConfig create(String id, MethodSpec methodSpec, AnalysisConfig ac) {
     return new ConcolicMethodConfig(id, methodSpec, null, ac, new ConcolicValuesFromConfig(methodSpec, null));
   }
 
