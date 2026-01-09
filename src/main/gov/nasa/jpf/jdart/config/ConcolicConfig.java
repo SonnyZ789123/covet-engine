@@ -226,9 +226,9 @@ public class ConcolicConfig {
   }
 
   private static ExplorationStrategy parseExplorationStrategy(Config conf) {
-    if (!conf.hasValue("jdart.exploration.strategy.class")) {
+    if (!conf.hasValue("jdart.exploration")) {
       return new DFSStrategy();
     }
-    return conf.getEssentialInstance("jdart.exploration.strategy.class", ExplorationStrategy.class);
+    return conf.getEssentialInstance("jdart.exploration", ExplorationStrategy.class);
   }
 }
