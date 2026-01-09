@@ -21,18 +21,15 @@ import gov.nasa.jpf.constraints.api.ConstraintSolver;
 import gov.nasa.jpf.constraints.solvers.ConstraintSolverFactory;
 import gov.nasa.jpf.constraints.types.TypeContext;
 import gov.nasa.jpf.jdart.ConcolicPerturbator;
-import gov.nasa.jpf.jdart.ConcolicUtil;
 import gov.nasa.jpf.jdart.exploration.DFSStrategy;
 import gov.nasa.jpf.jdart.exploration.ExplorationStrategy;
 import gov.nasa.jpf.jdart.termination.NeverTerminate;
 import gov.nasa.jpf.jdart.termination.TerminationStrategy;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.google.common.base.Predicate;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.logging.Level;
@@ -70,15 +67,15 @@ public class ConcolicConfig {
    * strategy for exploring the symbolic execution tree
    */
   private ExplorationStrategy explorationStrategy;
-  
-  /**
-   * 
-   * @param conf 
-   */  
-  
+
   public ConcolicConfig() {
     
   }
+
+  /**
+   *
+   * @param conf
+   */
   public ConcolicConfig(Config conf) {
     initialize(conf);
   }
@@ -279,153 +276,4 @@ public class ConcolicConfig {
     }
     return conf.getEssentialInstance("jdart.exploration.strategy.class", ExplorationStrategy.class);
   }
-  
-  
-  // LEGACY API
-  
-  
-  /**
-   * method configuration
-   */
-  @Deprecated
-  public static class MethodConfig {
-    private final String className;
-    private final String methodName;
-    private final Class<?>[] paramTypes;
-    private final int hashCode;
-    private String[] paramNames;
-
-    public MethodConfig(String className, String methodName,
-        Class<?>[] paramTypes) {
-      this.className = className;
-      this.methodName = methodName;
-      this.paramTypes = paramTypes;
-
-      // calculate hashcode (performance optimization, not sure if needed)
-      int hash = 3;
-      hash = 79 * hash
-          + (this.className != null ? this.className.hashCode() : 0);
-      hash = 79 * hash
-          + (this.methodName != null ? this.methodName.hashCode() : 0);
-      hash = 79 * hash + Arrays.deepHashCode(this.paramTypes);
-      this.hashCode = hash;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      if (obj == null) {
-        return false;
-      }
-      if (getClass() != obj.getClass()) {
-        return false;
-      }
-      final MethodConfig other = (MethodConfig) obj;
-      if ((this.className == null) ? (other.className != null)
-          : !this.className.equals(other.className)) {
-        return false;
-      }
-      if ((this.methodName == null) ? (other.methodName != null)
-          : !this.methodName.equals(other.methodName)) {
-        return false;
-      }
-      if (!Arrays.deepEquals(this.paramTypes, other.paramTypes)) {
-        return false;
-      }
-      return true;
-    }
-
-    @Override
-    public int hashCode() {
-      return this.hashCode;
-    }
-
-    /**
-     * @return the className
-     */
-    public String getClassName() {
-      return className;
-    }
-
-    /**
-     * @return the methodName
-     */
-    public String getMethodName() {
-      return methodName;
-    }
-
-    /**
-     * @return the paramTypes
-     */
-    public Class<?>[] getParamTypes() {
-      return paramTypes;
-    }
-
-    /**
-     * @return the paramNames
-     */
-    public String[] getParamNames() {
-      return paramNames;
-    }
-
-    @Override
-    public String toString() {
-      return this.className + "." + this.methodName + "("
-          + Arrays.toString(paramNames) + ":" + Arrays.toString(paramTypes)
-          + ")";
-    }
-    
-    public MethodSpec toMethodSpec() {
-      ParamConfig[] pcs = new ParamConfig[paramTypes.length];
-      for(int i = 0; i < pcs.length; i++) {
-        pcs[i] = new ParamConfig(paramTypes[i].getSimpleName(), paramNames[i]);
-      }
-      return new MethodSpec(className, methodName, pcs);
-    }
-  }
-  
-  /**
-   * parse one line of config into method description
-   * 
-   * @param configLine
-   * @return 
-   */
-  @Deprecated
-  protected MethodConfig parseMethodConfig(String configLine) {
-    // gov.nasa.example.Classname.methodname(name:int,name2:java.lang.Integer)    
-    String[] split = configLine.split("[\\(\\)]");
-    String fullMethodName = split[0].trim();
-    String paramString = (split.length > 1) ? split[1].trim() : ",";
-    // gov.nasa.example.Classname.methodname
-    int idx = fullMethodName.lastIndexOf(".");
-    String className = fullMethodName.substring(0, idx).trim();
-    String methodName = fullMethodName.substring(idx+1).trim();    
-    // name:int,name2:java.lang.Integer
-    
-    split = paramString.split(",");
-    Class<?>[] paramTypes = new Class<?>[split.length];
-    String[] paramNames = new String[split.length];
-    for (int i=0; i<split.length;i++) {
-      paramNames[i] = split[i].substring(0,split[i].indexOf(":")).trim();
-      String tName = split[i].substring(split[i].indexOf(":")+1);
-      paramTypes[i] = ConcolicUtil.parseType(tName.trim());
-    }
-
-    MethodConfig mc = new MethodConfig(className, methodName, paramTypes);
-    mc.paramNames = paramNames;
-    return mc;
-  }
-  
-  @Deprecated
-  public void addConcolicClass(final String className) {
-    globalConfig.addSymbolicStatic(className);
-    final Predicate<? super String> old = globalConfig.getSymbolicFieldsInclude();
-    final Predicate<String> inclPred = new Predicate<String>() {
-      @Override
-      public boolean apply(String str) {
-        return str.endsWith("@" + className) || old.apply(str);
-      }
-    };
-    globalConfig.setSymbolicFieldsInclude(inclPred);
-  }
-
 }
