@@ -26,7 +26,6 @@ import gov.nasa.jpf.jdart.exploration.ExplorationStrategy;
 import gov.nasa.jpf.jdart.termination.NeverTerminate;
 import gov.nasa.jpf.jdart.termination.TerminationStrategy;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -50,9 +49,9 @@ public class ConcolicConfig {
    */
   private ConstraintSolver solver;
   
-  private TypeContext types = new TypeContext(true);
+  private final TypeContext types = new TypeContext(true);
   
-  protected final AnalysisConfig globalConfig = new AnalysisConfig();
+  protected final AnalysisConfig defaultAnalysisConfig = new AnalysisConfig();
   
   private final Map<String, ConcolicMethodConfig> concolicMethods = new HashMap<>();
   
@@ -70,7 +69,7 @@ public class ConcolicConfig {
 
   /**
    *
-   * @param conf
+   * @param conf the jpf config file to read from
    */
   public ConcolicConfig(Config conf) {
     initialize(conf);
@@ -80,14 +79,7 @@ public class ConcolicConfig {
    * 
    * api
    * 
-   */  
-  
-  public ConcolicConfig(ConcolicConfig other) {
-    this.solver = other.solver;
-    this.concolicMethods.putAll(other.concolicMethods);
-    this.termination = other.termination;
-    this.explorationStrategy = other.explorationStrategy;
-  }
+   */
 
   /**
    * get method config for concolic method
@@ -97,15 +89,6 @@ public class ConcolicConfig {
   public ConcolicMethodConfig getMethodConfig(String id) {
     return concolicMethods.get(id);
   }
-  
-  public Collection<ConcolicMethodConfig> getMethodConfigs() {
-    return concolicMethods.values();
-  }
-  
-  public void setConstraintSolver(ConstraintSolver solver) {
-    this.solver = solver;
-  }
-  
   /**
    * @return the solver
    */
@@ -124,11 +107,7 @@ public class ConcolicConfig {
   public ExplorationStrategy getExplorationStrategy() {
       return this.explorationStrategy;
   }
-  
-  public Config generateJPFConfig() {
-    return generateJPFConfig(null);
-  }
-    
+
   /** 
    * generates a jpf config corresponding to this configuration
    * 
@@ -177,25 +156,6 @@ public class ConcolicConfig {
 
   public void registerConcolicMethod(ConcolicMethodConfig mc) {
     concolicMethods.put(mc.getId(), mc);
-  }
-  
-  public void addConcolicMethod(String id, MethodSpec methodSpec, AnalysisConfig ac) {
-    if (ac == null)
-      ac = globalConfig;
-    ConcolicMethodConfig cm = ConcolicMethodConfig.create(id, methodSpec, ac);
-    registerConcolicMethod(cm);
-  }
-
-  public void addConcolicMethod(String id, String className, String methodName, AnalysisConfig ac, ParamConfig ...params) {
-    addConcolicMethod(id, new MethodSpec(className, methodName, params), ac);
-  }
-
-  public void addConcolicMethod(String id, String methodSpec, AnalysisConfig ac) {
-    addConcolicMethod(id, MethodSpec.parse(methodSpec), ac);
-  }
-  
-  public void clearConcolicMethods() {
-    concolicMethods.clear();
   }
   
   /* ******************************************************************************

@@ -286,85 +286,59 @@ public class AnalysisConfig {
   public int getTreeMaxDepth() {
     return treeMaxDepth;
   }
-  
-  public void setTreeMaxDepth(int treeMaxDepth) {
-    this.treeMaxDepth = treeMaxDepth;
+
+  public int getTreeMaxAltDepth() {
+    return treeMaxAltDepth;
   }
-  
+
   public boolean maxDepthExceeded(int depth) {
     if(treeMaxDepth < 0)
       return false;
     return (depth > treeMaxDepth);
   }
-  
-  public int getTreeMaxAltDepth() {
-    return treeMaxAltDepth;
-  }
-  
-  public void setTreeMaxAltDepth(int treeMaxAltDepth) {
-    this.treeMaxAltDepth = treeMaxAltDepth;
-  }
-  
+
   public boolean maxAltDepthExceeded(int altDepth) {
     if(treeMaxAltDepth < 0)
       return false;
     return (altDepth > treeMaxAltDepth);
   }
-  
-  public void setConstraints(List<String> constraints) {
+
+  public boolean hasMaxNestingDepth() {
+    return maxNestingDepth >= 0;
+  }
+
+  public boolean maxNestingDepthExceeded(int depth) {
+    if (maxNestingDepth < 0)
+      return false;
+    return (depth > maxNestingDepth);
+  }
+
+
+  private void setConstraints(List<String> constraints) {
     this.constraints.clear();
     this.constraints.addAll(constraints);
   }
-  
-  public void setConstraints(String constraintsStr) {
+
+  private void setConstraints(String constraintsStr) {
     String[] elems = constraintsStr.trim().split("\\s*;\\s*");
     setConstraints(Arrays.asList(elems));
   }
-  
-  public void addConstraint(String constraint) {
-    this.constraints.add(constraint);
-  }
-  
-  public void addConstraints(List<String> constraints) {
-    this.constraints.addAll(constraints);
-  }
-  
+
   public List<String> getConstraints() {
     return Collections.unmodifiableList(this.constraints);
   }
   
-  public void setSymbolicStatics(List<String> symbolicStatics) {
-    this.symbolicStatics.clear();
-    this.symbolicStatics.addAll(symbolicStatics);
-  }
-  
-  public void setSymbolicStatics(String symbolicStaticString) {
+  private void setSymbolicStatics(String symbolicStaticString) {
     String[] classes = symbolicStaticString.trim().split("\\s*,\\s*");
     this.symbolicStatics.clear();
     this.symbolicStatics.addAll(Arrays.asList(classes));
   }
-  
-  public void addSymbolicStatic(String symbolicStatic) {
-    this.symbolicStatics.add(symbolicStatic);
-  }
-  
-  public void addSymbolicStatics(List<String> symbolicStatics) {
-    this.symbolicStatics.addAll(symbolicStatics);
-  }
-  
-  public void clearSymbolicStatics() {
-    this.symbolicStatics.clear();
-  }
-  
+
   public List<String> getSymbolicStatics() {
     return Collections.unmodifiableList(symbolicStatics);
   }
   
-  public void setSymbolicFieldsExclude(Predicate<? super String> symbFieldsExclude) {
-    this.symbFieldExclude = symbFieldsExclude;
-  }
-  
-  public void setSymbolicFieldsExclude(String symbFieldsExcludeStr) {
+  private void setSymbolicFieldsExclude(String symbFieldsExcludeStr) {
     this.symbFieldExclude = predicateFromString(symbFieldsExcludeStr);
   }
   
@@ -372,11 +346,7 @@ public class AnalysisConfig {
     return this.symbFieldExclude;
   }
   
-  public void setSymbolicFieldsInclude(Predicate<? super String> symbFieldsInclude) {
-    this.symbFieldInclude = symbFieldsInclude;
-  }
-  
-  public void setSymbolicFieldsInclude(String symbFieldsInclude) {
+  private void setSymbolicFieldsInclude(String symbFieldsInclude) {
     this.symbFieldInclude = predicateFromString(symbFieldsInclude);
   }
   
@@ -384,15 +354,11 @@ public class AnalysisConfig {
     return symbFieldInclude;
   }
   
-  public void setSpecialExclude(Predicate<? super ClassInfo> specialExclude) {
+  private void setSpecialExclude(Predicate<? super ClassInfo> specialExclude) {
     this.specialExclude = specialExclude;
   }
   
-  public Predicate<? super ClassInfo> getSpecialExclude() {
-    return specialExclude;
-  }
-  
-  public void setSpecialExclude(String excludeString) {
+  private void setSpecialExclude(String excludeString) {
     final Pattern pat = patternFromString(excludeString);
     this.specialExclude = new Predicate<ClassInfo>() {
       @Override
@@ -402,35 +368,20 @@ public class AnalysisConfig {
     };
   }
 
-  public boolean hasMaxNestingDepth() {
-    return maxNestingDepth >= 0;
+  public Predicate<? super ClassInfo> getSpecialExclude() {
+    return specialExclude;
   }
-  
-  public boolean maxNestingDepthExceeded(int depth) {
-    if(maxNestingDepth < 0)
-      return false;
-    return (depth > maxNestingDepth);
-  }
-  
   public boolean isExploreInitially() {
     return exploreInitially;
   }
   
-  public void setSuspendExploration(String str) {
+  private void setSuspendExploration(String str) {
     Predicate<MethodInfo> pred = methodPatternFromString(str);
     this.suspendExploration = pred;
   }
   
-  public void setResumeExploration(String str) {
+  private void setResumeExploration(String str) {
     Predicate<MethodInfo> pred = methodPatternFromString(str);
-    this.resumeExploration = pred;
-  }
-  
-  public void setSuspendExploration(Predicate<? super MethodInfo> pred) {
-    this.suspendExploration = pred;
-  }
-  
-  public void setResumeExploration(Predicate<? super MethodInfo> pred) {
     this.resumeExploration = pred;
   }
 
