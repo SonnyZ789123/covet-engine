@@ -30,9 +30,114 @@ import com.google.common.base.Predicates;
 import gov.nasa.jpf.JPF;
 import gov.nasa.jpf.util.JPFLogger;
 
+/**
+ * Configuration keys supported by {@link AnalysisConfig}.
+ *
+ * <p>All keys are read relative to a configurable prefix, typically:
+ * <pre>
+ *   jdart.configs.&lt;configId&gt;
+ * </pre>
+ *
+ * <h2>Tree and Exploration Bounds</h2>
+ *
+ * <ul>
+ *   <li><b>{@code PREFIX.max_depth}</b><br>
+ *       Type: {@code int}<br>
+ *       Meaning: Maximum depth of the constraints tree (path length).<br>
+ *       Default: {@code -1} (no limit)
+ *   </li>
+ *
+ *   <li><b>{@code PREFIX.max_alt_depth}</b><br>
+ *       Type: {@code int}<br>
+ *       Meaning: Maximum alternative (branching) depth in the constraints tree.<br>
+ *       Default: {@code -1} (no limit)
+ *   </li>
+ *
+ *   <li><b>{@code PREFIX.max_nesting_depth}</b><br>
+ *       Type: {@code int}<br>
+ *       Meaning: Maximum method call nesting depth during symbolic execution.<br>
+ *       Default: {@code -1} (no limit)
+ *   </li>
+ * </ul>
+ *
+ * <h2>Constraint and Solver Configuration</h2>
+ *
+ * <ul>
+ *   <li><b>{@code PREFIX.constraints}</b><br>
+ *       Type: {@code String} (semicolon-separated)<br>
+ *       Meaning: Additional global constraints added to every path condition.<br>
+ *       Example: {@code x > 0; y != 3}
+ *   </li>
+ *
+ *   <li><b>{@code PREFIX.use_func_defs}</b><br>
+ *       Type: {@code boolean}<br>
+ *       Meaning: Whether to load function definitions / axioms into the solver.<br>
+ *       Default: {@code false}
+ *   </li>
+ * </ul>
+ *
+ * <h2>Exploration Control</h2>
+ *
+ * <p>All exploration-related keys are under {@code PREFIX.exploration.*}.
+ *
+ * <ul>
+ *   <li><b>{@code PREFIX.exploration.initial}</b><br>
+ *       Type: {@code boolean}<br>
+ *       Meaning: Whether symbolic exploration is enabled initially.<br>
+ *       Default: {@code true}
+ *   </li>
+ *
+ *   <li><b>{@code PREFIX.exploration.suspend}</b><br>
+ *       Type: {@code String} (method pattern)<br>
+ *       Meaning: Suspend symbolic exploration when entering matching methods.<br>
+ *       Pattern format:
+ *       {@code fully.qualified.Class.method(type1,type2)}<br>
+ *       Supports wildcards {@code *}, {@code ?}, and {@code ;} (OR).
+ *   </li>
+ *
+ *   <li><b>{@code PREFIX.exploration.resume}</b><br>
+ *       Type: {@code String} (method pattern)<br>
+ *       Meaning: Resume symbolic exploration when entering matching methods.<br>
+ *       Uses the same pattern syntax as {@code suspend}.
+ *   </li>
+ * </ul>
+ *
+ * <h2>Symbolic State Configuration</h2>
+ *
+ * <p>All symbolic-related keys are under {@code PREFIX.symbolic.*}.
+ *
+ * <ul>
+ *   <li><b>{@code PREFIX.symbolic.statics}</b><br>
+ *       Type: {@code String} (comma-separated class names)<br>
+ *       Meaning: Classes whose static fields are treated as symbolic.
+ *   </li>
+ *
+ *   <li><b>{@code PREFIX.symbolic.exclude}</b><br>
+ *       Type: {@code String} (pattern)<br>
+ *       Meaning: Exclude matching fields from being treated as symbolic.<br>
+ *       Supports wildcards {@code *}, {@code ?}, and {@code ;}.
+ *   </li>
+ *
+ *   <li><b>{@code PREFIX.symbolic.include}</b><br>
+ *       Type: {@code String} (pattern)<br>
+ *       Meaning: Include matching fields as symbolic, overriding exclusions.<br>
+ *       Supports wildcards {@code *}, {@code ?}, and {@code ;}.
+ *   </li>
+ * </ul>
+ *
+ * <h2>Notes</h2>
+ *
+ * <ul>
+ *   <li>All limits default to {@code -1}, meaning "no limit".</li>
+ *   <li>All pattern-based keys are translated into regular expressions internally.</li>
+ *   <li>Invalid or missing keys silently fall back to defaults.</li>
+ *   <li>Some configuration options (e.g. {@code specialExclude}) are API-only and
+ *       cannot be set via configuration files.</li>
+ * </ul>
+ */
 public class AnalysisConfig {
   
-  private static transient JPFLogger logger = JPF.getLogger("jdart");
+  private static final transient JPFLogger logger = JPF.getLogger("jdart");
     
   public static Predicate<MethodInfo> methodPatternFromString(String patternStr) {
     final Pattern pat = patternFromString(patternStr);
@@ -57,6 +162,7 @@ public class AnalysisConfig {
       }
     };
   }
+
   public static Pattern patternFromString(String patternStr) {
     String[] subPats = patternStr.trim().split("\\s*;\\s*");
     StringBuilder sb = new StringBuilder();
@@ -68,7 +174,12 @@ public class AnalysisConfig {
       else
         sb.append("|");
 
-      sb.append(sp.replace(".", "\\.").replace("(", "\\(").replace("[","\\[").replace("*", ".*").replace("?", "."));
+      sb.append(sp
+              .replace(".", "\\.")
+              .replace("(", "\\(")
+              .replace("[","\\[")
+              .replace("*", ".*")
+              .replace("?", "."));
     }
     sb.append(")$");
     String regex = sb.toString();
