@@ -1,14 +1,14 @@
-package <package>;
+package <packageName>;
 
 import junit.framework.*;
 
-public class <class> extends TestCase {
+public class <className> extends TestCase {
 
 <tests:{t | 
 
   public void test<i0>() throws Throwable {
 
-  <t.methods:{m | 
+  <t.methods:{m |
     // step <i0>    
     if (!(<m.precondition>)) {
       fail("Precondition not met: <m.precondition>");

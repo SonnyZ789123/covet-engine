@@ -22,19 +22,14 @@ import gov.nasa.jpf.jdart.config.ConcolicMethodConfig;
 import gov.nasa.jpf.jdart.config.ParamConfig;
 import gov.nasa.jpf.jdart.constraints.Path;
 import gov.nasa.jpf.util.TemplateBasedCompiler;
-import gov.nasa.jpf.vm.ClassPath;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  *
@@ -57,18 +52,10 @@ public class TestSuiteGenerator {
   }  
   
   public void generate() throws IOException {
-
-    TemplateBasedCompiler compiler = new TemplateBasedCompiler(new File(outDir));
-    
-    int parts = 0;
     for (TestSubSuite sub : suite) {
-      Map<String,Object> subInfo = new HashMap<>();
-      subInfo.put("tests", sub.getTests());
-      subInfo.put("packageName", sub.getPackageName());
-      subInfo.put("className", sub.getClassName());
-                 
-      compiler.addDynamicSource(packageName, this.suiteName + (parts++), subInfo,
-        TestSuiteGenerator.class.getResourceAsStream("/gov/nasa/jpf/jdart/testsuites/SubSuite.st"));            
+      TestSuiteFileST writer = new TestSuiteFileST(sub, outDir);
+      writer.writeTestSuiteFile(
+              TestSuiteGenerator.class.getResourceAsStream("/gov/nasa/jpf/jdart/testsuites/SubSuite.st"));
     }
         
   }
@@ -81,9 +68,9 @@ public class TestSuiteGenerator {
     String dir = conf.getString("jdart.tests.dir");
     String pkg = conf.getString("jdart.tests.pkg");
     ConcolicMethodConfig mc =analysis.getMethodConfig();
-    String suiteName = conf.getString("jdart.tests.suitename", "Tests" +
-        mc.getMethodName().substring(0, 1).toUpperCase() + 
-        mc.getMethodName().substring(1));
+    String suiteName = conf.getString("jdart.tests.suitename",
+            Character.toUpperCase(mc.getMethodName().charAt(0)) +
+                    mc.getMethodName().substring(1) + "Test");
     
     boolean staticMeth = true;
     try {

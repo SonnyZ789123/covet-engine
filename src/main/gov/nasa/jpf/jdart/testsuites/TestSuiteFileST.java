@@ -7,17 +7,16 @@ import java.util.*;
 
 public class TestSuiteFileST {
     private final TestSubSuite testSubSuite;
-    private final File outDir;
+    private final File outBaseDir;
 
     private final List<File> sourceFiles = new ArrayList<>();
 
-    public TestSuiteFileST(TestSubSuite testSubSuite, File outDir) {
+    public TestSuiteFileST(TestSubSuite testSubSuite, String outBaseDir) {
         this.testSubSuite = testSubSuite;
-        this.outDir = outDir;
-        outDir.mkdirs();
+        this.outBaseDir = new File(outBaseDir);
     }
 
-    public void renderTestSuiteFile(String packageName, String className, Map<String,Object> attributes, InputStream tplIs) throws IOException {
+    public void writeTestSuiteFile(InputStream tplIs) throws IOException {
         StringBuilder sb = new StringBuilder();
         try (BufferedReader r = new BufferedReader(new InputStreamReader(tplIs))) {
             String line;
@@ -28,26 +27,20 @@ public class TestSuiteFileST {
 
         ST tpl = new ST(sb.toString());
 
-        for (Map.Entry<String, Object> e : attributes.entrySet()) {
-            tpl.add(e.getKey(), e.getValue());
-        }
-        tpl.add("package", packageName);
-        tpl.add("class", className);
+        tpl.add("tests", testSubSuite.getTests());
+        tpl.add("packageName", testSubSuite.getPackageName());
+        tpl.add("className", testSubSuite.getClassName());
 
-        String packagePath = packageName.replace('.', File.separatorChar);
-
-        File outputDir = new File(outDir, packagePath);
-        outputDir.mkdirs();
-
-        File outputFile = new File(outputDir, className + ".java");
-
-        try (FileWriter fw = new FileWriter(outputFile)) {
-            fw.write(tpl.render());
-        }
+        writeToFile(tpl.render());
     }
 
-    private void writeToFile(File outputFile, String content) throws IOException {
+    private void writeToFile(String content) throws IOException {
+        String packagePath = testSubSuite.getPackageName().replace('.', File.separatorChar);
 
+        File outputDir = new File(outBaseDir, packagePath);
+        outputDir.mkdirs();
+
+        File outputFile = new File(outputDir, testSubSuite.getClassName() + ".java");
 
         try (FileWriter fw = new FileWriter(outputFile)) {
             fw.write(content);

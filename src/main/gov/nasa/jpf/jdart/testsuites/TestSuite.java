@@ -45,15 +45,20 @@ public class TestSuite implements Iterable<TestSubSuite> {
     this.subSuiteSize = subSuiteSize;
     this.testCases.addAll(tests);
   }
-  
+
+  // Used for writing test suite files
   public Iterator<TestSubSuite> iterator() {    
     List<TestSubSuite> subSuites = new LinkedList<>();
+
+    // For only one sub-suite, don't append an index to the name
+    boolean singleSubSuite = this.testCases.size() <= this.subSuiteSize;
+
     int offset = 0;
-    for (int i=0 ; i < this.testCases.size() ; i+= this.subSuiteSize) {
+    for (int i=0 ; i < this.testCases.size() ; i += this.subSuiteSize) {
       TestSubSuite sub = new TestSubSuite(
               this.packageName,
-              this.suiteName + i,
-              this.testCases.subList(offset, min(offset+this.subSuiteSize, this.testCases.size())
+              singleSubSuite ? this.suiteName : this.suiteName + i,
+              this.testCases.subList(offset, min(offset + this.subSuiteSize, this.testCases.size())
               ));
       subSuites.add(sub);
       offset += this.subSuiteSize;
