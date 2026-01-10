@@ -67,20 +67,7 @@ public class TestSuiteGenerator {
                  
       compiler.addDynamicSource(packageName, this.suiteName + (parts++), subInfo,
         TestSuiteGenerator.class.getResourceAsStream("/gov/nasa/jpf/jdart/testsuites/SubSuite.st"));            
-    }    
-    
-    // generate suite file
-    Map<String,Object> suiteInfo = new HashMap<String,Object>();
-    //suiteInfo.put("package", packageName);
-    //suiteInfo.put("suite", suiteName);
-    List<String> partNames = new ArrayList<String>();
-    for (int i=0;i<parts;i++) {
-      partNames.add( this.suiteName + i);
     }
-    suiteInfo.put("parts", partNames);
-
-    compiler.addDynamicSource(packageName, this.suiteName, suiteInfo,
-      TestSuiteGenerator.class.getResourceAsStream("/gov/nasa/jpf/jdart/testsuites/TestSuite.st"));            
         
   }
   
@@ -92,7 +79,7 @@ public class TestSuiteGenerator {
     String dir = conf.getString("jdart.tests.dir");
     String pkg = conf.getString("jdart.tests.pkg");
     ConcolicMethodConfig mc =analysis.getMethodConfig();
-    String suiteName = conf.getString("jdart.tests.suitename", "Tests" + 
+    String suiteName = conf.getString("jdart.tests.suitename", "Tests" +
         mc.getMethodName().substring(0, 1).toUpperCase() + 
         mc.getMethodName().substring(1));
     
