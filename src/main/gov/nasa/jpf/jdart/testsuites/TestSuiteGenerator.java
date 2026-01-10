@@ -55,7 +55,7 @@ public class TestSuiteGenerator {
     for (TestSubSuite sub : suite) {
       TestSuiteFileST writer = new TestSuiteFileST(sub, outDir);
       writer.writeTestSuiteFile(
-              TestSuiteGenerator.class.getResourceAsStream("/gov/nasa/jpf/jdart/testsuites/SubSuite.st"));
+              TestSuiteGenerator.class.getResourceAsStream("/gov/nasa/jpf/jdart/testsuites/TestSuite.st"));
     }
         
   }
