@@ -1,45 +1,47 @@
-package <package>;
+package <packageName>;
 
-import junit.framework.*;
-import junit.textui.*;
+import org.junit.jupiter.api.Test;
 
-public class <class> extends TestCase {
+import static org.junit.jupiter.api.Assertions.*;
 
-  public static void main(String[] args) {
-    TestRunner runner = new TestRunner();
-    TestResult result = runner.doRun(suite(args), false);
-    if (! result.wasSuccessful()) {
-      System.exit(1);
+public class <className> {
+
+<tests:{t |
+    @Test
+    public void test<i0>() {
+<t.methods:{m |
+        // Check precondition
+        assertTrue(<m.precondition>, "Precondition not met");
+
+<if(m.check.instanceMeth)>
+        <m.check.className> obj = new <m.check.className>();
+<endif>
+
+<if(m.checks.exception)>
+        assertThrows(<m.check.exceptionClass>.class, () -> {
+        <if(m.check.instanceMeth)>
+            obj.<m.call>;
+        <else>
+            <m.call>;
+        <endif>
+        \});
+<else>
+    <if(m.check.instanceMeth)>
+        obj.<m.call>;
+    <else>
+        <m.call>;
+    <endif>
+<endif>
+
+        // perform checks
+<if(m.check.checks)>
+<m.check.checkCalls:{a |
+        <a>;
+}>
+<endif>
+}>
     \}
-  \}
 
-  public <class>(String name) {
-    super(name);
-  \}
-
-  public static Test suite(String[] args) {
-    int min = -1;
-    int max = -1;
-    if (args.length == 2) {
-      min = Integer.parseInt(args[0]);
-      max = Integer.parseInt(args[1]);
-    }
-    TestSuite result = new TestSuite();
-
-    int c = 0;
-    int x = 0;
-    <parts:{p | 
-    if (min \< 0 || max \< 0 || (c >= min && c \<= max)) {
-      result.addTest(new TestSuite(<p>.class));
-      x++;
-    \}
-    c++;
-    }> 
-
-    System.out.println("Running " + x + " of " + c + " sub suites: " +
-        "[" + min + ", " + max + "]");
-
-    return result;
-  \}
-
+}>
 \}
+
