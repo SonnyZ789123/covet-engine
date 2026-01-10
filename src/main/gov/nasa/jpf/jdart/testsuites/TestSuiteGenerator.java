@@ -41,13 +41,13 @@ import java.util.Map;
  */
 public class TestSuiteGenerator {
   
-  private TestSuite suite;
+  private final TestSuite suite;
   
-  private String suiteName;
+  private final String suiteName;
   
-  private String packageName;
+  private final String packageName;
   
-  private String outDir;
+  private final String outDir;
 
   public TestSuiteGenerator(TestSuite suite, String suiteName, String packageName, String outDir) {
     this.suite = suite;
@@ -64,6 +64,8 @@ public class TestSuiteGenerator {
     for (TestSubSuite sub : suite) {
       Map<String,Object> subInfo = new HashMap<>();
       subInfo.put("tests", sub.getTests());
+      subInfo.put("packageName", sub.getPackageName());
+      subInfo.put("className", sub.getClassName());
                  
       compiler.addDynamicSource(packageName, this.suiteName + (parts++), subInfo,
         TestSuiteGenerator.class.getResourceAsStream("/gov/nasa/jpf/jdart/testsuites/SubSuite.st"));            
@@ -151,7 +153,7 @@ public class TestSuiteGenerator {
       tests.add(tc);
     }
     
-    TestSuite suite = new TestSuite(tests);
+    TestSuite suite = new TestSuite(pkg, suiteName, tests);
     return new TestSuiteGenerator(suite, suiteName, pkg, dir);    
   }
   

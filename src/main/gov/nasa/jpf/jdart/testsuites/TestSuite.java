@@ -26,26 +26,35 @@ import java.util.List;
  */
 public class TestSuite implements Iterable<TestSubSuite> {
 
+  private final String packageName;
+  private final String suiteName;
+  /** Maximum number of test cases per sub-suite */
   private int subSuiteSize = 1000;
 
-  private List<TestCase> testCases = new LinkedList<TestCase>();
-  
-  public TestSuite(Collection<TestCase> tests) {
+  private final List<TestCase> testCases = new LinkedList<>();
+
+  public TestSuite(String packageName, String suiteName, Collection<TestCase> tests) {
+    this.packageName = packageName;
+    this.suiteName = suiteName;
     this.testCases.addAll(tests);
   }
 
-  public TestSuite(Collection<TestCase> tests, int subSuiteSize) {
-    this.testCases.addAll(tests);
+  public TestSuite(String packageName,String SuiteName, Collection<TestCase> tests, int subSuiteSize) {
+    this.packageName = packageName;
+    this.suiteName = SuiteName;
     this.subSuiteSize = subSuiteSize;
+    this.testCases.addAll(tests);
   }
- 
   
   public Iterator<TestSubSuite> iterator() {    
-    List<TestSubSuite> subSuites = new LinkedList<TestSubSuite>();
+    List<TestSubSuite> subSuites = new LinkedList<>();
     int offset = 0;
-    for (int i=0;i<this.testCases.size(); i+= this.subSuiteSize) { 
-      TestSubSuite sub = new TestSubSuite(this.testCases.subList(
-              offset, min(offset+this.subSuiteSize, this.testCases.size()) ));
+    for (int i=0 ; i < this.testCases.size() ; i+= this.subSuiteSize) {
+      TestSubSuite sub = new TestSubSuite(
+              this.packageName,
+              this.suiteName + i,
+              this.testCases.subList(offset, min(offset+this.subSuiteSize, this.testCases.size())
+              ));
       subSuites.add(sub);
       offset += this.subSuiteSize;
     }    

@@ -75,7 +75,7 @@ public class TestSuiteExample implements JPFShell {
       Collection<TestCase> tests = new ArrayList<TestCase>();   
       tests.add(test0);
       tests.add(test1);   
-      TestSuite suite = new TestSuite(tests,1);
+      TestSuite suite = new TestSuite("temp", "DemoSuite", tests);
       
       File tmpSrcDir = File.createTempFile("jdart", "tests");
       tmpSrcDir.delete();

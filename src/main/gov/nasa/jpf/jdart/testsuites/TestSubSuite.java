@@ -18,14 +18,27 @@ package gov.nasa.jpf.jdart.testsuites;
 import java.util.List;
 
 /**
- *
+ * A sub-suite of tests belonging to a given test suite. This class groups the test-cases that are written to the same
+ * Java file.
  */
 public class TestSubSuite {
-  
+
+  private final String packageName;
+  private final String className;
   private List<TestCase> testCases;
 
-  public TestSubSuite(List<TestCase> subList) {
+  public TestSubSuite(String packageName, String className, List<TestCase> subList) {
+    this.packageName = packageName;
+    this.className = className;
     this.testCases = subList;
+  }
+
+  public String getPackageName() {
+    return this.packageName;
+  }
+
+  public String getClassName() {
+    return this.className;
   }
 
   public List<TestCase> getTests() {
