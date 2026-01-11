@@ -96,7 +96,9 @@ public class TestSuiteGenerator {
       if (!isStaticMethod) {
         mcs.setClassName(mc.getClassName());
       }
-      MethodWrapper mw = new MethodWrapper(targetMethod, "true", mcs, analysis.getInitParams(), mc.getParams(), val);
+      MethodWrapper mw = new MethodWrapper(
+              targetMethod, "true", mcs,
+              new ParameterAssignment(analysis.getInitParams(), mc.getParams(), val));
       TestCase tc = new TestCase(mw);
       tests.add(tc);
     }
