@@ -1,39 +1,45 @@
 package <packageName>;
 
+<if(!isStaticMethod)>import org.junit.jupiter.api.BeforeEach;<endif>
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class <className> {
 
+<if(!isStaticMethod)>
+    private <methodClassName> obj;
+
+    @BeforeEach
+    void setUp() {
+        // Complete the initialization of obj as needed
+        obj = new <methodClassName>();
+    }
+<endif>
+
 <tests:{t |
     @Test
     public void test<i0>() {
-<t.methods:{m |
-<if(!m.staticMethod)>
-        <m.className> obj = new <m.className>();
-<endif>
-
-<if(!m.throwsExceptionTest)>
-    <if(m.staticMethod)>
-        <m.returnType> result = <m.call>;
+<if(!t.executionPath.throwsExceptionTest)>
+    <if(t.executionPath.staticMethod)>
+        <t.executionPath.returnType> result = <t.executionPath.call>;
     <else>
-        <m.returnType> result = obj.<m.call>;
+        <t.executionPath.returnType> result = obj.<t.executionPath.call>;
     <endif>
 
         // perform assertions
 <else>
-        assertThrows(<m.exceptionClass>.class, () -> {
-            <if(m.staticMethod)>
-            <m.call>;
+        assertThrows(<t.executionPath.exceptionClass>.class, () -> {
+            <if(t.executionPath.staticMethod)>
+            <t.executionPath.call>;
             <else>
-            obj.<m.call>;
+            obj.<t.executionPath.call>;
             <endif>
         \});
 <endif>
-<m.assertions:{a |
+<t.executionPath.assertions:{a |
         <a>;
-}>}>
+}>
     \}
 
 }>\}

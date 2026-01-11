@@ -16,6 +16,8 @@
 package gov.nasa.jpf.jdart.testsuites;
 
 import static java.lang.Math.min;
+
+import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -28,20 +30,23 @@ public class TestSuite implements Iterable<TestSubSuite> {
 
   private final String packageName;
   private final String suiteName;
+  private final Method methodUT;
   /** Maximum number of test cases per sub-suite */
   private int subSuiteSize = 1000;
 
   private final List<TestCase> testCases = new LinkedList<>();
 
-  public TestSuite(String packageName, String suiteName, Collection<TestCase> tests) {
+  public TestSuite(String packageName, String suiteName, Method methodUT, Collection<TestCase> tests) {
     this.packageName = packageName;
     this.suiteName = suiteName;
+    this.methodUT = methodUT;
     this.testCases.addAll(tests);
   }
 
-  public TestSuite(String packageName,String SuiteName, Collection<TestCase> tests, int subSuiteSize) {
+  public TestSuite(String packageName, String SuiteName, Method methodUT, Collection<TestCase> tests, int subSuiteSize) {
     this.packageName = packageName;
     this.suiteName = SuiteName;
+    this.methodUT = methodUT;
     this.subSuiteSize = subSuiteSize;
     this.testCases.addAll(tests);
   }
@@ -58,6 +63,7 @@ public class TestSuite implements Iterable<TestSubSuite> {
       TestSubSuite sub = new TestSubSuite(
               this.packageName,
               singleSubSuite ? this.suiteName : this.suiteName + i,
+              this.methodUT,
               this.testCases.subList(offset, min(offset + this.subSuiteSize, this.testCases.size())
               ));
       subSuites.add(sub);
