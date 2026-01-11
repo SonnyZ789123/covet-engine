@@ -83,6 +83,13 @@ public class TestExecutionPath {
     return this.path.getState() == PathState.ERROR;
   }
 
+  public String getExceptionClass() {
+    if (this.path.getState() == PathState.ERROR) {
+      return this.path.getErrorResult().getExceptionClass();
+    }
+    return null;
+  }
+
   /**
    * Used by the string template
    *
@@ -102,30 +109,11 @@ public class TestExecutionPath {
   }
 
   private void fillMethodAssertions() {
-    ST st;
-
-    switch (this.path.getState()) {
-      case OK:
-        st = new ST("assertEquals(<expected>, result)");
-        st.add("expected", path.getPostCondition().getReturn().conc);
-        break;
-
-      case ERROR:
-        st = new ST(
-                "assertThrows(<exception>.class, () -> {\n" +
-                        "    <call>;\n" +
-                        "})"
-        );
-
-        st.add("exception", path.getErrorResult().getExceptionClass());
-        st.add("call", this.getCall());
-        break;
-
-      default:
-        return;
+    if (this.path.getState() == PathState.OK) {
+      ST st = new ST("assertEquals(<expected>, result)");
+      st.add("expected", path.getPostCondition().getReturn().conc);
+      assertions.add(st.render());
     }
-
-    assertions.add(st.render());
   }
 
 }

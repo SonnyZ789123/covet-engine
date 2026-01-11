@@ -69,6 +69,10 @@ public class TestSuiteGenerator {
 
     Method targetMethod = getTargetMethod(mc, conf.getStringArray("classpath"));
 
+    if (pkg == null || pkg.isEmpty()) {
+      pkg = targetMethod.getDeclaringClass().getPackage().getName();
+    }
+
     ArrayList<TestCase> tests = new ArrayList<>();
     for (Path p : analysis.getConstraintsTree().getAllPaths()) {
       logger.finest("[TestSuiteGenerator] Generating test case for path: " + p);

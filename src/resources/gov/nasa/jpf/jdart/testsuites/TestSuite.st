@@ -20,9 +20,17 @@ public class <className> {
     <else>
         <m.returnType> result = obj.<m.call>;
     <endif>
-<endif>
 
-        // perform checks
+        // perform assertions
+<else>
+        assertThrows(<m.exceptionClass>.class, () -> {
+            <if(m.staticMethod)>
+            <m.call>;
+            <else>
+            obj.<m.call>;
+            <endif>
+        \});
+<endif>
 <m.assertions:{a |
         <a>;
 }>}>
