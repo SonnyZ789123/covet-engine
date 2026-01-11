@@ -78,7 +78,7 @@ public class TestSuiteGenerator {
         continue;
       }
 
-      MethodWrapper mw = new MethodWrapper(
+      TestExecutionPath mw = new TestExecutionPath(
               p, targetMethod, new ParameterAssignment(analysis.getInitParams(), mc.getParams(), val));
       TestCase tc = new TestCase(mw);
       tests.add(tc);

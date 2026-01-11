@@ -23,9 +23,9 @@ import java.util.List;
  */
 public class TestCase {
   
-  private List<MethodWrapper> methods;
+  private List<TestExecutionPath> methods;
 
-  public TestCase(MethodWrapper ... methods) {
+  public TestCase(TestExecutionPath... methods) {
     this.methods = Arrays.asList(methods);
   }
   
@@ -33,7 +33,7 @@ public class TestCase {
   /**
    * @return the methods
    */
-  public List<MethodWrapper> getMethods() {
+  public List<TestExecutionPath> getMethods() {
     return methods;
   }  
   
