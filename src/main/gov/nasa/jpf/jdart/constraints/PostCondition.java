@@ -17,6 +17,7 @@ package gov.nasa.jpf.jdart.constraints;
 
 import gov.nasa.jpf.constraints.api.Expression;
 import gov.nasa.jpf.constraints.api.Variable;
+import gov.nasa.jpf.jdart.ConcolicUtil.Pair;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -28,7 +29,8 @@ import java.util.Map.Entry;
  */
 public class PostCondition {
 
-  private Map<Variable<?>, Expression<?>> conditions = new HashMap<>();
+  private final Map<Variable<?>, Expression<?>> conditions = new HashMap<>();
+  private Pair<?> concolicReturnValue = null;
 
   public Map<Variable<?>, Expression<?>> getConditions() {
     return conditions;
@@ -38,9 +40,18 @@ public class PostCondition {
     conditions.put(var, expression);
   }
   
-  public <T> void setReturn(Expression<T> expression) {
-    Variable<T> retVal = Variable.create(expression.getType(), "return");
-    addCondition(retVal, expression);
+  public <T> void addReturnCondition(Pair<T> returnValue) {
+    setReturn(returnValue);
+    Variable<T> retVal = Variable.create(returnValue.symb.getType(), "return");
+    addCondition(retVal, returnValue.symb);
+  }
+
+  public void setReturn(Pair<?> returnValue) {
+    this.concolicReturnValue = returnValue;
+  }
+
+  public Pair<?> getReturn() {
+    return concolicReturnValue;
   }
 
   public void print(Appendable a) throws IOException {

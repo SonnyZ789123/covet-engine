@@ -177,8 +177,11 @@ public class ConcolicMethodExplorer {
     else { // primitive
       Type<?> type = ConcolicUtil.forTypeCode(rtc);
       Pair<?> cr = ConcolicUtil.peek(sf, type);
-      if(!cr.isConcrete())
-        pc.setReturn(cr.symb);
+      pc.setReturn(cr);
+      // TODO: maybe we can always add the return value for primitive types e.g., [return:=6]
+      if(!cr.isConcrete()) {
+        pc.addReturnCondition(cr);
+      }
     }
   }
       
@@ -353,10 +356,11 @@ public class ConcolicMethodExplorer {
     for(SymbolicVariable<?> sv : symContext.getSymbolicVars())
       sv.readInitial(initValuation, sf);
     currValuation = initValuation;
+    logger.finest(">>>>>>>>>>>>>>>> First execution with valuation " + currValuation + "\n\n");
   }
   
   public void prepareReexecution(StackFrame sf) {
-    logger.finest("\n\n>>>>>>>>>>>>>>>> Reexecuting with valuation " + currValuation);
+    logger.finest(">>>>>>>>>>>>>>>> Reexecuting with valuation " + currValuation + "\n\n");
     for(SymbolicVariable<?> sv : symContext.getSymbolicVars())
       sv.apply(currValuation, sf);
   }
