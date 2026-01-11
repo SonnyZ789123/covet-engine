@@ -41,11 +41,7 @@ public class MethodWrapper {
     boolean isStaticMethod = Modifier.isStatic(method.getModifiers());
     this.callBase = isStaticMethod ? method.getDeclaringClass().getName() + "." + method.getName() : method.getName();
     this.parameterAssignment = parameterAssignment;
-    MethodChecks checks = new MethodChecks();
-    if (!isStaticMethod) {
-      checks.setClassName(method.getDeclaringClass().getName());
-    }
-    this.checks = checks;
+    this.checks = createChecks();
   }
 
   /**
@@ -57,6 +53,33 @@ public class MethodWrapper {
   
   public MethodChecks getCheck() {
     return this.checks;
+  }
+
+  public String getReturnType() {
+    return method.getReturnType().getName();
+  }
+
+  private MethodChecks createChecks() {
+    boolean isStaticMethod = Modifier.isStatic(method.getModifiers());
+
+    MethodChecks checks = new MethodChecks();
+
+    StringBuilder sb = new StringBuilder();
+    switch (this.path.getState()) {
+      case OK:
+        sb.append("assertEquals(").append(path.getPostCondition().getReturn().conc).append(", result)");
+        checks.addCheck(sb.toString());
+        break;
+      case ERROR:
+        checks.setExpectedException(path.getErrorResult().getExceptionClass());
+        break;
+    }
+
+    if (!isStaticMethod) {
+      checks.setClassName(method.getDeclaringClass().getName());
+    }
+
+    return checks;
   }
   
 }
