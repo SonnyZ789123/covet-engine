@@ -5,15 +5,15 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class <className> {
+public class <methodProps.className> {
 
-<if(!isStaticMethod)>
-    private <methodClassName> obj;
+<if(!methodProps.isStaticMethod)>
+    private <methodProps.methodClassName> obj;
 
     @BeforeEach
     void setUp() {
         // Complete the initialization of obj as needed
-        obj = new <methodClassName>();
+        obj = new <methodProps.methodClassName>();
     }
 <endif>
 
@@ -21,16 +21,16 @@ public class <className> {
     @Test
     public void test<i0>() {
 <if(!t.executionPath.throwsExceptionTest)>
-    <if(t.executionPath.staticMethod)>
-        <t.executionPath.returnType> result = <t.executionPath.call>;
+    <if(methodProps.staticMethod)>
+        <methodProps.returnType> result = <t.executionPath.call>;
     <else>
-        <t.executionPath.returnType> result = obj.<t.executionPath.call>;
+        <methodProps.returnType> result = obj.<t.executionPath.call>;
     <endif>
 
         // perform assertions
 <else>
         assertThrows(<t.executionPath.exceptionClass>.class, () -> {
-            <if(t.executionPath.staticMethod)>
+            <if(methodProps.staticMethod)>
             <t.executionPath.call>;
             <else>
             obj.<t.executionPath.call>;

@@ -30,8 +30,6 @@ import java.util.List;
 public class TestExecutionPath {
 
   private final Path path;
-  private final Method method;
-  private final boolean isStaticMethod;
   private final String callBase;
   private final ParameterAssignment parameterAssignment;
   private final List<String> assertions = new ArrayList<>();
@@ -42,8 +40,7 @@ public class TestExecutionPath {
           ParameterAssignment parameterAssignment
   ) {
     this.path = path;
-    this.method = method;
-    this.isStaticMethod = Modifier.isStatic(method.getModifiers());
+    boolean isStaticMethod = Modifier.isStatic(method.getModifiers());
     this.callBase = isStaticMethod ? method.getDeclaringClass().getName() + "." + method.getName() : method.getName();
     this.parameterAssignment = parameterAssignment;
     fillMethodAssertions();
@@ -68,44 +65,22 @@ public class TestExecutionPath {
   /**
    * Used by the string template
    *
-   * @return the return type of the method
-   */
-  public String getReturnType() {
-    return method.getReturnType().getName();
-  }
-
-  /**
-   * Used by the string template
-   *
    * @return whether the test is expected to throw an exception
    */
   public boolean isThrowsExceptionTest() {
     return this.path.getState() == PathState.ERROR;
   }
 
+  /**
+   * Used by the string template
+   *
+   * @return the exception class name if the test is expected to throw an exception, null otherwise
+   */
   public String getExceptionClass() {
     if (this.path.getState() == PathState.ERROR) {
       return this.path.getErrorResult().getExceptionClass();
     }
     return null;
-  }
-
-  /**
-   * Used by the string template
-   *
-   * @return whether the method under test is static
-   */
-  public boolean isStaticMethod() {
-    return this.isStaticMethod;
-  }
-
-  /**
-   * Used by the string template
-   *
-   * @return the class name where the method under test is declared
-   */
-  public String getClassName() {
-    return method.getDeclaringClass().getName();
   }
 
   private void fillMethodAssertions() {

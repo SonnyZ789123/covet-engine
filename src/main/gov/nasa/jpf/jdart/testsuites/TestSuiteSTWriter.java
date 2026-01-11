@@ -8,14 +8,37 @@ import java.io.*;
 import java.lang.reflect.Modifier;
 
 public class TestSuiteSTWriter {
-    private static JPFLogger logger = JPF.getLogger("jdart.testsuites");
+    private static class MethodProps {
+        public String methodClassName;
+        public boolean isStaticMethod;
+        public String returnType;
+
+        public MethodProps(String methodClassName, boolean isStaticMethod, String returnType) {
+            this.methodClassName = methodClassName;
+            this.isStaticMethod = isStaticMethod;
+            this.returnType = returnType;
+        }
+    }
+
+    private static final JPFLogger logger = JPF.getLogger("jdart.testsuites");
 
     private final TestSuite testSuite;
     private final File outBaseDir;
 
+    // Shared test suite fields for file string template rendering
+    private final String packageName;
+    private final MethodProps methodProps;
+
     public TestSuiteSTWriter(TestSuite testSuite, String outBaseDir) {
         this.testSuite = testSuite;
         this.outBaseDir = new File(outBaseDir);
+
+        this.packageName = testSuite.getPackageName();
+        this.methodProps = new MethodProps(
+                testSuite.getMethodUT().getDeclaringClass().getName(),
+                Modifier.isStatic(testSuite.getMethodUT().getModifiers()),
+                testSuite.getMethodUT().getReturnType().getName()
+        );
     }
 
     public void write() {
@@ -41,16 +64,15 @@ public class TestSuiteSTWriter {
         ST tpl = new ST(sb.toString());
 
         tpl.add("tests", testSubSuite.getTests());
-        tpl.add("packageName", testSubSuite.getPackageName());
+        tpl.add("packageName", packageName);
+        tpl.add("methodProps", methodProps);
         tpl.add("className", testSubSuite.getClassName());
-        tpl.add("methodClassName", testSubSuite.getMethodUT().getDeclaringClass().getName());
-        tpl.add("isStaticMethod", Modifier.isStatic(testSubSuite.getMethodUT().getModifiers()));
 
         writeToFile(testSubSuite, tpl.render());
     }
 
     private void writeToFile(TestSubSuite testSubSuite, String content) throws IOException {
-        String packagePath = testSubSuite.getPackageName().replace('.', File.separatorChar);
+        String packagePath = packageName.replace('.', File.separatorChar);
 
         File outputDir = new File(outBaseDir, packagePath);
         outputDir.mkdirs();
