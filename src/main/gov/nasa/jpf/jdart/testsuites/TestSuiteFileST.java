@@ -9,8 +9,6 @@ public class TestSuiteFileST {
     private final TestSubSuite testSubSuite;
     private final File outBaseDir;
 
-    private final List<File> sourceFiles = new ArrayList<>();
-
     public TestSuiteFileST(TestSubSuite testSubSuite, String outBaseDir) {
         this.testSubSuite = testSubSuite;
         this.outBaseDir = new File(outBaseDir);
