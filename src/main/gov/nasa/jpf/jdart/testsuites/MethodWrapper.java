@@ -15,6 +15,8 @@
  */
 package gov.nasa.jpf.jdart.testsuites;
 
+import gov.nasa.jpf.jdart.constraints.Path;
+
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
@@ -23,15 +25,18 @@ import java.lang.reflect.Modifier;
  */
 public class MethodWrapper {
 
+  private final Path path;
   private final Method method;
   private final String callBase;
   private final ParameterAssignment parameterAssignment;
   private final MethodChecks checks;
 
   public MethodWrapper(
+          Path path,
           Method method,
           ParameterAssignment parameterAssignment
   ) {
+    this.path = path;
     this.method = method;
     boolean isStaticMethod = Modifier.isStatic(method.getModifiers());
     this.callBase = isStaticMethod ? method.getDeclaringClass().getName() + "." + method.getName() : method.getName();

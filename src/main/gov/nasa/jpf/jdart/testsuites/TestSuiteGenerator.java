@@ -79,7 +79,7 @@ public class TestSuiteGenerator {
       }
 
       MethodWrapper mw = new MethodWrapper(
-              targetMethod, new ParameterAssignment(analysis.getInitParams(), mc.getParams(), val));
+              p, targetMethod, new ParameterAssignment(analysis.getInitParams(), mc.getParams(), val));
       TestCase tc = new TestCase(mw);
       tests.add(tc);
     }
