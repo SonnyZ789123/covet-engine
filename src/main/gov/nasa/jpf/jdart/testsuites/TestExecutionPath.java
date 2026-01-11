@@ -23,7 +23,7 @@ import java.lang.reflect.Modifier;
 /**
  *
  */
-public class MethodWrapper {
+public class TestExecutionPath {
 
   private final Path path;
   private final Method method;
@@ -31,7 +31,7 @@ public class MethodWrapper {
   private final ParameterAssignment parameterAssignment;
   private final MethodChecks checks;
 
-  public MethodWrapper(
+  public TestExecutionPath(
           Path path,
           Method method,
           ParameterAssignment parameterAssignment
