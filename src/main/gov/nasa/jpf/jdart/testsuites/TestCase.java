@@ -15,26 +15,24 @@
  */
 package gov.nasa.jpf.jdart.testsuites;
 
-import java.util.Arrays;
-import java.util.List;
-
 /**
  *
  */
 public class TestCase {
   
-  private List<TestExecutionPath> methods;
+  private final TestExecutionPath executionPath;
 
-  public TestCase(TestExecutionPath... methods) {
-    this.methods = Arrays.asList(methods);
+  public TestCase(TestExecutionPath executionPaths) {
+    this.executionPath = executionPaths;
   }
-  
 
   /**
+   * Used by the string template
+   *
    * @return the methods
    */
-  public List<TestExecutionPath> getMethods() {
-    return methods;
+  public TestExecutionPath getExecutionPath() {
+    return executionPath;
   }  
   
 }

@@ -15,6 +15,7 @@
  */
 package gov.nasa.jpf.jdart.testsuites;
 
+import java.lang.reflect.Method;
 import java.util.List;
 
 /**
@@ -25,11 +26,13 @@ public class TestSubSuite {
 
   private final String packageName;
   private final String className;
-  private List<TestCase> testCases;
+  private final List<TestCase> testCases;
+  private final Method methodUT;
 
-  public TestSubSuite(String packageName, String className, List<TestCase> subList) {
+  public TestSubSuite(String packageName, String className, Method methodUT, List<TestCase> subList) {
     this.packageName = packageName;
     this.className = className;
+    this.methodUT = methodUT;
     this.testCases = subList;
   }
 
@@ -41,10 +44,12 @@ public class TestSubSuite {
     return this.className;
   }
 
+  public Method getMethodUT() {
+    return this.methodUT;
+  }
+
   public List<TestCase> getTests() {
     return this.testCases;
   }
-  
-  
   
 }

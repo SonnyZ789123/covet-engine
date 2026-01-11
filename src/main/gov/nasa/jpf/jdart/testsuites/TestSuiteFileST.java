@@ -3,6 +3,7 @@ package gov.nasa.jpf.jdart.testsuites;
 import org.stringtemplate.v4.ST;
 
 import java.io.*;
+import java.lang.reflect.Modifier;
 import java.util.*;
 
 public class TestSuiteFileST {
@@ -28,6 +29,8 @@ public class TestSuiteFileST {
         tpl.add("tests", testSubSuite.getTests());
         tpl.add("packageName", testSubSuite.getPackageName());
         tpl.add("className", testSubSuite.getClassName());
+        tpl.add("methodClassName", testSubSuite.getMethodUT().getDeclaringClass().getName());
+        tpl.add("isStaticMethod", Modifier.isStatic(testSubSuite.getMethodUT().getModifiers()));
 
         writeToFile(tpl.render());
     }

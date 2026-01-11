@@ -88,7 +88,7 @@ public class TestSuiteGenerator {
       tests.add(tc);
     }
 
-    TestSuite suite = new TestSuite(pkg, suiteName, tests);
+    TestSuite suite = new TestSuite(pkg, suiteName, targetMethod, tests);
     return new TestSuiteGenerator(suite, dir);
   }
 
