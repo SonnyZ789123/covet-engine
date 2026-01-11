@@ -15,7 +15,12 @@
  */
 package gov.nasa.jpf.jdart.testsuites;
 
+import gov.nasa.jpf.constraints.api.Valuation;
+import gov.nasa.jpf.jdart.config.ParamConfig;
+
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.List;
 
 /**
  *
@@ -24,28 +29,43 @@ public class MethodWrapper {
 
   private final Method method;
     
-  private final String call;
-  
+  private final String callBase;
+
+  private final String parameterString;
+
+  private final Object[] defaultParams;
+
+  private final List<ParamConfig> params;
+
+  private final Valuation val;
+
   private final String precondition;
 
   private final MethodChecks checks;
 
-  public MethodWrapper(Method method, String call, String precondition, MethodChecks checks) {
+  public MethodWrapper(
+          Method method,
+          String precondition,
+          MethodChecks checks,
+          Object[] defaultParams,
+          List<ParamConfig> params,
+          Valuation val) {
     this.method = method;
-    this.call = call;
+    boolean isStaticMethod = Modifier.isStatic(method.getModifiers());
+    this.callBase = isStaticMethod ? method.getDeclaringClass().getName() + "." + method.getName() : method.getName();
+    this.parameterString = getParameterString(defaultParams, params, val);
+    this.defaultParams = defaultParams;
+    this.params = params;
+    this.val = val;
     this.precondition = precondition;
     this.checks = checks;
-  }
-  
-  public MethodWrapper(Method method, String call, String precondition) {
-    this(method, call, precondition, new MethodChecks());
   }
 
   /**
    * @return the call
    */
   public String getCall() {
-    return call;
+    return this.callBase + this.parameterString;
   }
 
   /**
@@ -57,6 +77,28 @@ public class MethodWrapper {
   
   public MethodChecks getCheck() {
     return this.checks;
+  }
+
+  private String getParameterString(Object[] initParams, List<ParamConfig> params, Valuation val) {
+    StringBuilder call = new StringBuilder("(");
+
+    if (params.size() <= 0) {
+      call.append(")");
+      return call.toString();
+    }
+
+    for (int i = 0; i < params.size(); i++) {
+      ParamConfig pc = params.get(i);
+      Object objVal = val.getValue(pc.getName());
+      if (objVal == null) {  //the parameter is treated as concrete
+        objVal = initParams[i];
+      }
+      call.append(objVal).append((objVal instanceof Float) ? "f" : "").append(",");
+    }
+    call = new StringBuilder(call.substring(0, call.length() - 1));
+
+    call.append(")");
+    return call.toString();
   }
   
 }

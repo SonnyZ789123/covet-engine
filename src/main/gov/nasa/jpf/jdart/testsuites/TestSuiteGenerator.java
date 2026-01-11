@@ -18,6 +18,7 @@ package gov.nasa.jpf.jdart.testsuites;
 import gov.nasa.jpf.Config;
 import gov.nasa.jpf.JPF;
 import gov.nasa.jpf.constraints.api.Valuation;
+import gov.nasa.jpf.constraints.api.ValuationEntry;
 import gov.nasa.jpf.jdart.CompletedAnalysis;
 import gov.nasa.jpf.jdart.config.ConcolicMethodConfig;
 import gov.nasa.jpf.jdart.config.ParamConfig;
@@ -31,7 +32,9 @@ import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  *
@@ -78,8 +81,7 @@ public class TestSuiteGenerator {
 
     Method targetMethod = getTargetMethod(mc, conf.getStringArray("classpath"));
 
-    boolean isStaticMethod = !Modifier.isStatic(targetMethod.getModifiers());
-    String callBase = (isStaticMethod) ? targetMethod.getDeclaringClass().getName() + "." + targetMethod.getName() : targetMethod.getName();
+    boolean isStaticMethod = Modifier.isStatic(targetMethod.getModifiers());
 
     ArrayList<TestCase> tests = new ArrayList<>();
     for (Path p : analysis.getConstraintsTree().getAllPaths()) {
@@ -90,13 +92,11 @@ public class TestSuiteGenerator {
         continue;
       }
 
-      String callString = getParameterString(analysis.getInitParams(), mc.getParams(), val);
-      String call = callBase + callString;
       MethodChecks mcs = new MethodChecks();
       if (!isStaticMethod) {
         mcs.setClassName(mc.getClassName());
       }
-      MethodWrapper mw = new MethodWrapper(targetMethod, call, "true", mcs);
+      MethodWrapper mw = new MethodWrapper(targetMethod, "true", mcs, analysis.getInitParams(), mc.getParams(), val);
       TestCase tc = new TestCase(mw);
       tests.add(tc);
     }
@@ -134,28 +134,6 @@ public class TestSuiteGenerator {
     } catch (ClassNotFoundException | IOException e) {
       throw new RuntimeException(e);
     }
-  }
-
-  private static String getParameterString(Object[] initParams, List<ParamConfig> params, Valuation val) {
-    StringBuilder call = new StringBuilder("(");
-
-    if (params.size() <= 0) {
-      call.append(")");
-      return call.toString();
-    }
-
-    for (int i = 0; i < params.size(); i++) {
-      ParamConfig pc = params.get(i);
-      Object objVal = val.getValue(pc.getName());
-      if (objVal == null) {  //the parameter is treated as concrete
-        objVal = initParams[i];
-      }
-      call.append(objVal).append((objVal instanceof Float) ? "f" : "").append(",");
-    }
-    call = new StringBuilder(call.substring(0, call.length() - 1));
-
-    call.append(")");
-    return call.toString();
   }
 
 }
