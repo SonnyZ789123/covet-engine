@@ -26,7 +26,6 @@ import gov.nasa.jpf.util.JPFLogger;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
@@ -36,20 +35,14 @@ import java.util.ArrayList;
  */
 public class TestSuiteGenerator {
 
-  private static JPFLogger logger = JPF.getLogger("jdart.testsuites");
+  private static final JPFLogger logger = JPF.getLogger("jdart.testsuites");
   
   private final TestSuite suite;
   
-  private final String suiteName;
-  
-  private final String packageName;
-  
   private final String outDir;
 
-  public TestSuiteGenerator(TestSuite suite, String suiteName, String packageName, String outDir) {
+  public TestSuiteGenerator(TestSuite suite, String outDir) {
     this.suite = suite;
-    this.suiteName = suiteName;
-    this.packageName = packageName;
     this.outDir = outDir;
   }  
   
@@ -92,7 +85,7 @@ public class TestSuiteGenerator {
     }
 
     TestSuite suite = new TestSuite(pkg, suiteName, tests);
-    return new TestSuiteGenerator(suite, suiteName, pkg, dir);
+    return new TestSuiteGenerator(suite, dir);
   }
 
   private static Method getTargetMethod(ConcolicMethodConfig mc, String[] classpath) {
