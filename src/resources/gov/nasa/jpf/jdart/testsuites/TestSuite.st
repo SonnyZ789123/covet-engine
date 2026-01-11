@@ -10,9 +10,6 @@ public class <className> {
     @Test
     public void test<i0>() {
 <t.methods:{m |
-        // Check precondition
-        assertTrue(<m.precondition>, "Precondition not met");
-
 <if(m.check.instanceMeth)>
         <m.check.className> obj = new <m.check.className>();
 <endif>

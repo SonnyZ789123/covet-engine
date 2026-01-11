@@ -26,12 +26,10 @@ public class MethodWrapper {
   private final Method method;
   private final String callBase;
   private final ParameterAssignment parameterAssignment;
-  private final String precondition;
   private final MethodChecks checks;
 
   public MethodWrapper(
           Method method,
-          String precondition,
           MethodChecks checks,
           ParameterAssignment parameterAssignment
   ) {
@@ -39,7 +37,6 @@ public class MethodWrapper {
     boolean isStaticMethod = Modifier.isStatic(method.getModifiers());
     this.callBase = isStaticMethod ? method.getDeclaringClass().getName() + "." + method.getName() : method.getName();
     this.parameterAssignment = parameterAssignment;
-    this.precondition = precondition;
     this.checks = checks;
   }
 
@@ -48,13 +45,6 @@ public class MethodWrapper {
    */
   public String getCall() {
     return this.callBase + this.parameterAssignment.getParameterString();
-  }
-
-  /**
-   * @return the precondition
-   */
-  public String getPrecondition() {
-    return precondition;
   }
   
   public MethodChecks getCheck() {

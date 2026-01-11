@@ -18,10 +18,8 @@ package gov.nasa.jpf.jdart.testsuites;
 import gov.nasa.jpf.Config;
 import gov.nasa.jpf.JPF;
 import gov.nasa.jpf.constraints.api.Valuation;
-import gov.nasa.jpf.constraints.api.ValuationEntry;
 import gov.nasa.jpf.jdart.CompletedAnalysis;
 import gov.nasa.jpf.jdart.config.ConcolicMethodConfig;
-import gov.nasa.jpf.jdart.config.ParamConfig;
 import gov.nasa.jpf.jdart.constraints.Path;
 import gov.nasa.jpf.util.JPFLogger;
 
@@ -32,9 +30,6 @@ import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  *
@@ -97,7 +92,7 @@ public class TestSuiteGenerator {
         mcs.setClassName(mc.getClassName());
       }
       MethodWrapper mw = new MethodWrapper(
-              targetMethod, "true", mcs,
+              targetMethod, mcs,
               new ParameterAssignment(analysis.getInitParams(), mc.getParams(), val));
       TestCase tc = new TestCase(mw);
       tests.add(tc);
