@@ -51,7 +51,7 @@ public class TestExecutionPath {
     return this.callBase + this.parameterAssignment.getParameterString();
   }
   
-  public MethodChecks getCheck() {
+  public MethodChecks getChecks() {
     return this.checks;
   }
 

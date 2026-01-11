@@ -10,20 +10,20 @@ public class <className> {
     @Test
     public void test<i0>() {
 <t.methods:{m |
-<if(m.check.instanceMeth)>
-        <m.check.className> obj = new <m.check.className>();
+<if(m.checks.instanceMeth)>
+        <m.checks.className> obj = new <m.checks.className>();
 <endif>
 
-<if(m.check.exception)>
-        assertThrows(<m.check.exceptionClass>.class, () -> {
-        <if(m.check.instanceMeth)>
+<if(m.checks.exception)>
+        assertThrows(<m.checks.exceptionClass>.class, () -> {
+        <if(m.checks.instanceMeth)>
             obj.<m.call>;
         <else>
             <m.call>;
         <endif>
         \});
 <else>
-    <if(m.check.instanceMeth)>
+    <if(m.checks.instanceMeth)>
         <m.returnType> result = obj.<m.call>;
     <else>
         <m.returnType> result = <m.call>;
@@ -31,9 +31,9 @@ public class <className> {
 <endif>
 
 
+<if(m.checks.checks)>
         // perform checks
-<if(m.check.checks)>
-<m.check.checkCalls:{a |
+<m.checks.checkCalls:{a |
         <a>;
 }><endif>
 }>
