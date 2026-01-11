@@ -47,12 +47,8 @@ public class TestSuiteGenerator {
   }  
   
   public void generate() throws IOException {
-    for (TestSubSuite sub : suite) {
-      TestSuiteFileST writer = new TestSuiteFileST(sub, outDir);
-      writer.writeTestSuiteFile(
-              TestSuiteGenerator.class.getResourceAsStream("/gov/nasa/jpf/jdart/testsuites/TestSuite.st"));
-    }
-        
+    TestSuiteSTWriter writer = new TestSuiteSTWriter(suite, outDir);
+    writer.write();
   }
   
   public void run() {
