@@ -37,11 +37,9 @@ public class <className> {
 <if(m.check.checks)>
 <m.check.checkCalls:{a |
         <a>;
-}>
-<endif>
+}><endif>
 }>
     \}
 
-}>
-\}
+}>\}
 

@@ -15,10 +15,14 @@
  */
 package gov.nasa.jpf.jdart.testsuites;
 
+import java.lang.reflect.Method;
+
 /**
  *
  */
 public class MethodWrapper {
+
+  private final Method method;
     
   private final String call;
   
@@ -26,14 +30,15 @@ public class MethodWrapper {
 
   private final MethodChecks checks;
 
-  public MethodWrapper(String call, String precondition, MethodChecks checks) {
+  public MethodWrapper(Method method, String call, String precondition, MethodChecks checks) {
+    this.method = method;
     this.call = call;
     this.precondition = precondition;
     this.checks = checks;
   }
   
-  public MethodWrapper(String call, String precondition) {
-    this(call, precondition, new MethodChecks());
+  public MethodWrapper(Method method, String call, String precondition) {
+    this(method, call, precondition, new MethodChecks());
   }
 
   /**

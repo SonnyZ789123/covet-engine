@@ -16,12 +16,13 @@
 package gov.nasa.jpf.jdart.testsuites;
 
 import gov.nasa.jpf.Config;
+import gov.nasa.jpf.JPF;
 import gov.nasa.jpf.constraints.api.Valuation;
 import gov.nasa.jpf.jdart.CompletedAnalysis;
 import gov.nasa.jpf.jdart.config.ConcolicMethodConfig;
 import gov.nasa.jpf.jdart.config.ParamConfig;
 import gov.nasa.jpf.jdart.constraints.Path;
-import gov.nasa.jpf.util.TemplateBasedCompiler;
+import gov.nasa.jpf.util.JPFLogger;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,11 +31,14 @@ import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  *
  */
 public class TestSuiteGenerator {
+
+  private static JPFLogger logger = JPF.getLogger("jdart.testsuites");
   
   private final TestSuite suite;
   
@@ -67,25 +71,54 @@ public class TestSuiteGenerator {
   public static TestSuiteGenerator fromAnalysis(CompletedAnalysis analysis, Config conf) {
     String dir = conf.getString("jdart.tests.dir");
     String pkg = conf.getString("jdart.tests.pkg");
-    ConcolicMethodConfig mc =analysis.getMethodConfig();
+    ConcolicMethodConfig mc = analysis.getMethodConfig();
     String suiteName = conf.getString("jdart.tests.suitename",
             Character.toUpperCase(mc.getMethodName().charAt(0)) +
                     mc.getMethodName().substring(1) + "Test");
-    
-    boolean staticMeth = true;
+
+    Method targetMethod = getTargetMethod(mc, conf.getStringArray("classpath"));
+
+    boolean isStaticMethod = !Modifier.isStatic(targetMethod.getModifiers());
+    String callBase = (isStaticMethod) ? targetMethod.getDeclaringClass().getName() + "." + targetMethod.getName() : targetMethod.getName();
+
+    ArrayList<TestCase> tests = new ArrayList<>();
+    for (Path p : analysis.getConstraintsTree().getAllPaths()) {
+      logger.finest("[TestSuiteGenerator] Generating test case for path: " + p);
+      Valuation val = p.getValuation();
+      if (val == null) {
+        // dont know cases
+        continue;
+      }
+
+      String callString = getParameterString(analysis.getInitParams(), mc.getParams(), val);
+      String call = callBase + callString;
+      MethodChecks mcs = new MethodChecks();
+      if (!isStaticMethod) {
+        mcs.setClassName(mc.getClassName());
+      }
+      MethodWrapper mw = new MethodWrapper(targetMethod, call, "true", mcs);
+      TestCase tc = new TestCase(mw);
+      tests.add(tc);
+    }
+
+    TestSuite suite = new TestSuite(pkg, suiteName, tests);
+    return new TestSuiteGenerator(suite, suiteName, pkg, dir);
+  }
+
+  private static Method getTargetMethod(ConcolicMethodConfig mc, String[] classpath) {
     try {
-      String[] paths = conf.getStringArray("classpath");
-      URL[] urls = new URL[paths.length];
+      URL[] urls = new URL[classpath.length];
       int i = 0;
-      for(String p : paths)
+      for(String p : classpath)
         urls[i++] = new File(p).toURI().toURL();
-      
+
       URLClassLoader uc = new URLClassLoader(urls);
       Class<?> cls = uc.loadClass(mc.getClassName());
       //Class<?> cls = uc.loadClass(conf.getTarget());
       //overloading not supported -- if necessary, make map from types in
       //jdart method spec to parametertypes in Class.getmethod
       Method[] ms = cls.getMethods();
+
       Method targetMethod = null;
       for(Method m : ms) {
         if(m.getName().equals(mc.getMethodName())) {
@@ -93,55 +126,36 @@ public class TestSuiteGenerator {
           break;
         }
       }
+
       uc.close();
+
       assert targetMethod != null;
-      
-      if(!Modifier.isStatic(targetMethod.getModifiers())) {
-        staticMeth = false;
-      }
+      return targetMethod;
     } catch (ClassNotFoundException | IOException e) {
       throw new RuntimeException(e);
     }
-    
-    String callBase = (staticMeth) ? mc.getClassName() + "." + mc.getMethodName() : mc.getMethodName();
-
-    ArrayList<TestCase> tests = new ArrayList<>();
-    for (Path p : analysis.getConstraintsTree().getAllPaths()) {
-      Valuation val = p.getValuation();
-      if (val == null) {
-        // dont know cases
-        continue;
-      }
-
-      String call = callBase + "(";
-      if (mc.getParams().size() > 0) {
-        int i = 0;
-        for (ParamConfig pc : mc.getParams()) {
-          Object objVal = val.getValue(pc.getName());
-          if(objVal == null) {//the parameter is treated as concrete
-            objVal = analysis.getInitParams()[i];
-          }
-          call += objVal + ((objVal instanceof Float) ? "f" : "") + ",";
-          i++;
-        }      
-        call = call.substring(0, call.length() -1);
-      }
-      call += ")";
-      MethodWrapper mw;
-      if(staticMeth)
-        mw = new MethodWrapper(call, "true");
-      else {
-        MethodChecks mcs = new MethodChecks();
-        mcs.setClassName(mc.getClassName());
-        //mcs.setClassName(conf.getTarget());
-        mw = new MethodWrapper(call, "true", mcs);
-      }
-      TestCase tc = new TestCase(mw);
-      tests.add(tc);
-    }
-    
-    TestSuite suite = new TestSuite(pkg, suiteName, tests);
-    return new TestSuiteGenerator(suite, suiteName, pkg, dir);    
   }
-  
+
+  private static String getParameterString(Object[] initParams, List<ParamConfig> params, Valuation val) {
+    StringBuilder call = new StringBuilder("(");
+
+    if (params.size() <= 0) {
+      call.append(")");
+      return call.toString();
+    }
+
+    for (int i = 0; i < params.size(); i++) {
+      ParamConfig pc = params.get(i);
+      Object objVal = val.getValue(pc.getName());
+      if (objVal == null) {  //the parameter is treated as concrete
+        objVal = initParams[i];
+      }
+      call.append(objVal).append((objVal instanceof Float) ? "f" : "").append(",");
+    }
+    call = new StringBuilder(call.substring(0, call.length() - 1));
+
+    call.append(")");
+    return call.toString();
+  }
+
 }
