@@ -14,7 +14,7 @@ public class <className> {
         <m.check.className> obj = new <m.check.className>();
 <endif>
 
-<if(m.checks.exception)>
+<if(m.check.exception)>
         assertThrows(<m.check.exceptionClass>.class, () -> {
         <if(m.check.instanceMeth)>
             obj.<m.call>;
@@ -24,11 +24,12 @@ public class <className> {
         \});
 <else>
     <if(m.check.instanceMeth)>
-        obj.<m.call>;
+        <m.returnType> result = obj.<m.call>;
     <else>
-        <m.call>;
+        <m.returnType> result = <m.call>;
     <endif>
 <endif>
+
 
         // perform checks
 <if(m.check.checks)>
