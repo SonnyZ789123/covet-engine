@@ -17,9 +17,12 @@ package gov.nasa.jpf.jdart.testsuites;
 
 import gov.nasa.jpf.jdart.constraints.Path;
 import gov.nasa.jpf.jdart.constraints.PathState;
+import org.stringtemplate.v4.ST;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  *
@@ -31,7 +34,7 @@ public class TestExecutionPath {
   private final boolean isStaticMethod;
   private final String callBase;
   private final ParameterAssignment parameterAssignment;
-  private final MethodAssertions methodAssertions;
+  private final List<String> assertions = new ArrayList<>();
 
   public TestExecutionPath(
           Path path,
@@ -43,7 +46,7 @@ public class TestExecutionPath {
     this.isStaticMethod = Modifier.isStatic(method.getModifiers());
     this.callBase = isStaticMethod ? method.getDeclaringClass().getName() + "." + method.getName() : method.getName();
     this.parameterAssignment = parameterAssignment;
-    this.methodAssertions = createMethodChecks();
+    fillMethodAssertions();
   }
 
   /**
@@ -56,10 +59,10 @@ public class TestExecutionPath {
   /**
    * Used by the string template
    *
-   * @return the checks to be performed after method execution
+   * @return the assertions for the method
    */
-  public MethodAssertions getMethodAssertions() {
-    return this.methodAssertions;
+  public List<String> getAssertions() {
+    return this.assertions;
   }
 
   /**
@@ -98,25 +101,31 @@ public class TestExecutionPath {
     return method.getDeclaringClass().getName();
   }
 
-  private MethodAssertions createMethodChecks() {
-    MethodAssertions methodAssertions = new MethodAssertions();
+  private void fillMethodAssertions() {
+    ST st;
 
-    StringBuilder sb = new StringBuilder();
     switch (this.path.getState()) {
       case OK:
-        sb.append("assertEquals(").append(path.getPostCondition().getReturn().conc).append(", result)");
+        st = new ST("assertEquals(<expected>, result)");
+        st.add("expected", path.getPostCondition().getReturn().conc);
         break;
-      case ERROR:
-        sb.append("assertThrows(")
-          .append(path.getErrorResult().getExceptionClass())
-          .append(".class, () -> { ")
-          .append(this.getCall())
-          .append("; })");
-        break;
-    }
-    methodAssertions.addAssertion(sb.toString());
 
-    return methodAssertions;
+      case ERROR:
+        st = new ST(
+                "assertThrows(<exception>.class, () -> {\n" +
+                        "    <call>;\n" +
+                        "})"
+        );
+
+        st.add("exception", path.getErrorResult().getExceptionClass());
+        st.add("call", this.getCall());
+        break;
+
+      default:
+        return;
+    }
+
+    assertions.add(st.render());
   }
-  
+
 }

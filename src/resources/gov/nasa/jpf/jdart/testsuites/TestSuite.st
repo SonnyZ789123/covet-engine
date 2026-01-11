@@ -23,7 +23,7 @@ public class <className> {
 <endif>
 
         // perform checks
-<m.methodAssertions.assertions:{a |
+<m.assertions:{a |
         <a>;
 }>}>
     \}
