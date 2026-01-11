@@ -30,13 +30,16 @@ public class MethodWrapper {
 
   public MethodWrapper(
           Method method,
-          MethodChecks checks,
           ParameterAssignment parameterAssignment
   ) {
     this.method = method;
     boolean isStaticMethod = Modifier.isStatic(method.getModifiers());
     this.callBase = isStaticMethod ? method.getDeclaringClass().getName() + "." + method.getName() : method.getName();
     this.parameterAssignment = parameterAssignment;
+    MethodChecks checks = new MethodChecks();
+    if (!isStaticMethod) {
+      checks.setClassName(method.getDeclaringClass().getName());
+    }
     this.checks = checks;
   }
 

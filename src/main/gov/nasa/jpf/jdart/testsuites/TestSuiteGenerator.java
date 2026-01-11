@@ -76,8 +76,6 @@ public class TestSuiteGenerator {
 
     Method targetMethod = getTargetMethod(mc, conf.getStringArray("classpath"));
 
-    boolean isStaticMethod = Modifier.isStatic(targetMethod.getModifiers());
-
     ArrayList<TestCase> tests = new ArrayList<>();
     for (Path p : analysis.getConstraintsTree().getAllPaths()) {
       logger.finest("[TestSuiteGenerator] Generating test case for path: " + p);
@@ -87,13 +85,8 @@ public class TestSuiteGenerator {
         continue;
       }
 
-      MethodChecks mcs = new MethodChecks();
-      if (!isStaticMethod) {
-        mcs.setClassName(mc.getClassName());
-      }
       MethodWrapper mw = new MethodWrapper(
-              targetMethod, mcs,
-              new ParameterAssignment(analysis.getInitParams(), mc.getParams(), val));
+              targetMethod, new ParameterAssignment(analysis.getInitParams(), mc.getParams(), val));
       TestCase tc = new TestCase(mw);
       tests.add(tc);
     }
