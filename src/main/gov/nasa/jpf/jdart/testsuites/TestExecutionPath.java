@@ -16,6 +16,7 @@
 package gov.nasa.jpf.jdart.testsuites;
 
 import gov.nasa.jpf.jdart.constraints.Path;
+import gov.nasa.jpf.jdart.constraints.PathState;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -27,9 +28,10 @@ public class TestExecutionPath {
 
   private final Path path;
   private final Method method;
+  private final boolean isStaticMethod;
   private final String callBase;
   private final ParameterAssignment parameterAssignment;
-  private final MethodChecks checks;
+  private final MethodAssertions methodAssertions;
 
   public TestExecutionPath(
           Path path,
@@ -38,10 +40,10 @@ public class TestExecutionPath {
   ) {
     this.path = path;
     this.method = method;
-    boolean isStaticMethod = Modifier.isStatic(method.getModifiers());
+    this.isStaticMethod = Modifier.isStatic(method.getModifiers());
     this.callBase = isStaticMethod ? method.getDeclaringClass().getName() + "." + method.getName() : method.getName();
     this.parameterAssignment = parameterAssignment;
-    this.checks = createChecks();
+    this.methodAssertions = createMethodChecks();
   }
 
   /**
@@ -50,36 +52,71 @@ public class TestExecutionPath {
   public String getCall() {
     return this.callBase + this.parameterAssignment.getParameterString();
   }
-  
-  public MethodChecks getChecks() {
-    return this.checks;
+
+  /**
+   * Used by the string template
+   *
+   * @return the checks to be performed after method execution
+   */
+  public MethodAssertions getMethodAssertions() {
+    return this.methodAssertions;
   }
 
+  /**
+   * Used by the string template
+   *
+   * @return the return type of the method
+   */
   public String getReturnType() {
     return method.getReturnType().getName();
   }
 
-  private MethodChecks createChecks() {
-    boolean isStaticMethod = Modifier.isStatic(method.getModifiers());
+  /**
+   * Used by the string template
+   *
+   * @return whether the test is expected to throw an exception
+   */
+  public boolean isThrowsExceptionTest() {
+    return this.path.getState() == PathState.ERROR;
+  }
 
-    MethodChecks checks = new MethodChecks();
+  /**
+   * Used by the string template
+   *
+   * @return whether the method under test is static
+   */
+  public boolean isStaticMethod() {
+    return this.isStaticMethod;
+  }
+
+  /**
+   * Used by the string template
+   *
+   * @return the class name where the method under test is declared
+   */
+  public String getClassName() {
+    return method.getDeclaringClass().getName();
+  }
+
+  private MethodAssertions createMethodChecks() {
+    MethodAssertions methodAssertions = new MethodAssertions();
 
     StringBuilder sb = new StringBuilder();
     switch (this.path.getState()) {
       case OK:
         sb.append("assertEquals(").append(path.getPostCondition().getReturn().conc).append(", result)");
-        checks.addCheck(sb.toString());
         break;
       case ERROR:
-        checks.setExpectedException(path.getErrorResult().getExceptionClass());
+        sb.append("assertThrows(")
+          .append(path.getErrorResult().getExceptionClass())
+          .append(".class, () -> { ")
+          .append(this.getCall())
+          .append("; })");
         break;
     }
+    methodAssertions.addAssertion(sb.toString());
 
-    if (!isStaticMethod) {
-      checks.setClassName(method.getDeclaringClass().getName());
-    }
-
-    return checks;
+    return methodAssertions;
   }
   
 }
