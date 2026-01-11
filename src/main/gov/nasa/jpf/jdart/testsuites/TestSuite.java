@@ -51,6 +51,14 @@ public class TestSuite implements Iterable<TestSubSuite> {
     this.testCases.addAll(tests);
   }
 
+  public String getPackageName() {
+    return packageName;
+  }
+
+  public Method getMethodUT() {
+    return methodUT;
+  }
+
   // Used for writing test suite files
   public Iterator<TestSubSuite> iterator() {    
     List<TestSubSuite> subSuites = new LinkedList<>();
@@ -61,9 +69,7 @@ public class TestSuite implements Iterable<TestSubSuite> {
     int offset = 0;
     for (int i=0 ; i < this.testCases.size() ; i += this.subSuiteSize) {
       TestSubSuite sub = new TestSubSuite(
-              this.packageName,
               singleSubSuite ? this.suiteName : this.suiteName + i,
-              this.methodUT,
               this.testCases.subList(offset, min(offset + this.subSuiteSize, this.testCases.size())
               ));
       subSuites.add(sub);
