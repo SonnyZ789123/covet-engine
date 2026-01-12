@@ -33,7 +33,10 @@ import gov.nasa.jpf.jdart.config.ParamConfig;
 import gov.nasa.jpf.jdart.constraints.*;
 import gov.nasa.jpf.jdart.constraints.tree.BranchEffect;
 import gov.nasa.jpf.jdart.constraints.tree.InstructionBranch;
+import gov.nasa.jpf.jdart.exploration.CoverageHeuristicStrategy;
 import gov.nasa.jpf.jdart.exploration.ExplorationStrategy;
+import gov.nasa.jpf.jdart.exploration.coverage.pathcov.InstructionCoverage;
+import gov.nasa.jpf.jdart.exploration.coverage.pathcov.MethodInstructionCoverage;
 import gov.nasa.jpf.jdart.objects.SymbolicObjectsContext;
 import gov.nasa.jpf.util.JPFLogger;
 import gov.nasa.jpf.vm.ClassInfo;
@@ -184,14 +187,46 @@ public class ConcolicMethodExplorer {
       }
     }
   }
+
+  public boolean checkCoveredPathOnCompletion() {
+    if (explorationStrategy instanceof CoverageHeuristicStrategy) {
+      if (!CoverageHeuristicStrategy.shouldIgnoreCoveredPaths) {
+        return false;
+      }
+
+      MethodInstructionCoverage methodInstructionCoverage = CoverageHeuristicStrategy.methodInstructionCoverage;
+      InstructionBranch instructionBranch = constraintsTree.getCurrentTarget().getInstructionBranch();
+      if (instructionBranch == null) {
+        return false;
+      }
+
+      Instruction insn = instructionBranch.getInstruction();
+      MethodInfo mi = insn.getMethodInfo();
+      InstructionCoverage cov = methodInstructionCoverage.getInstructionCoverage(mi.getFullName());
+
+      if (cov.isInstructionCovered(insn.getInstructionIndex())) {
+        constraintsTree.finish(PathResult.dontKnow());
+        return true;
+      }
+    }
+    return false;
+  }
       
   public void completePathOk(ThreadInfo ti) {
+    if (checkCoveredPathOnCompletion()) {
+      return;
+    }
+
     PostCondition pc = collectPostCondition(ti);
     PathResult res = PathResult.ok(currValuation, pc);
     constraintsTree.finish(res);
   }
   
   public void completePathError(ThreadInfo ti) {
+    if (checkCoveredPathOnCompletion()) {
+      return;
+    }
+
     ElementInfo exElem = ti.getPendingException().getException();
     StringWriter sw = new StringWriter();
     try(PrintWriter pw = new PrintWriter(sw)) {

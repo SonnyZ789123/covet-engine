@@ -24,7 +24,8 @@ import java.util.*;
 public class CoverageHeuristicStrategy implements ExplorationStrategy {
     private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
 
-    private static final MethodInstructionCoverage methodInstructionCoverage;
+    public static final MethodInstructionCoverage methodInstructionCoverage;
+    public static final boolean shouldIgnoreCoveredPaths;
 
     static {
         try {
@@ -41,10 +42,28 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
             methodInstructionCoverage = new MethodInstructionCoverage(instructionPathsByMethod);
 
             reader.close();
+
+            Properties properties = readConfiguration();
+            shouldIgnoreCoveredPaths = Boolean.parseBoolean(
+                    properties.getProperty("jdart.ignore_covered_paths", "false"));
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize CoverageHeuristicStrategy: " + e);
         }
     }
+
+    private static Properties readConfiguration() {
+        Properties props = new Properties();
+
+        try (FileReader reader =
+                     new FileReader("/jdart-project/data/coverage_heuristic.config")) {
+            props.load(reader);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to read coverage_heuristic.config", e);
+        }
+
+        return props;
+    }
+
 
     private final Queue<WeightedNode> nodesFrontierQueue;
     private Node previousTargetedNode;
