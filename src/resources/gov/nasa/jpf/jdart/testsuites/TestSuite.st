@@ -1,6 +1,6 @@
 package <packageName>;
 
-<if(!isStaticMethod)>import org.junit.jupiter.api.BeforeEach;<endif>
+<if(!methodProps.isStaticMethod)>import org.junit.jupiter.api.BeforeEach;<endif>
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -21,7 +21,7 @@ public class <methodProps.className> {
     @Test
     public void test<i0>() {
 <if(!t.executionPath.throwsExceptionTest)>
-    <if(methodProps.staticMethod)>
+    <if(methodProps.isStaticMethod)>
         <methodProps.returnType> result = <t.executionPath.call>;
     <else>
         <methodProps.returnType> result = obj.<t.executionPath.call>;
@@ -30,7 +30,7 @@ public class <methodProps.className> {
         // perform assertions
 <else>
         assertThrows(<t.executionPath.exceptionClass>.class, () -> {
-            <if(methodProps.staticMethod)>
+            <if(methodProps.isStaticMethod)>
             <t.executionPath.call>;
             <else>
             obj.<t.executionPath.call>;
