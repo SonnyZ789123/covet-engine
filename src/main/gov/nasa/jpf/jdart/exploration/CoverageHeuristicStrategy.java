@@ -29,7 +29,7 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
     static {
         try {
             // Adjust path as needed (absolute or relative to working dir)
-            Reader reader = new FileReader("/workspace/data/jdart_instruction_paths.json");
+            Reader reader = new FileReader("/jdart-project/data/jdart_instruction_paths.json");
 
             Gson gson = new GsonBuilder()
                     .setPrettyPrinting()
