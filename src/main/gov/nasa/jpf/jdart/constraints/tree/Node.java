@@ -12,12 +12,16 @@ public final class Node {
     private NodeData data;
     private NodeType dataType;
 
-    public Node(Node parent) {
+    /** The instruction that led to this node, can be null */
+    private final InstructionBranch instructionBranch;
+
+    public Node(Node parent, InstructionBranch instructionBranch) {
         this.parent = parent;
         this.depth = (parent != null) ? parent.depth + 1 : 0;
         this.altDepth = (parent != null) ? parent.altDepth : 0;
         this.data = null;
         this.dataType = NodeType.VIRGIN;
+        this.instructionBranch = instructionBranch;
     }
 
     public int incAltDepth() {
@@ -38,6 +42,10 @@ public final class Node {
 
     public NodeType getDataType() {
         return dataType;
+    }
+
+    public InstructionBranch getInstructionBranch() {
+        return instructionBranch;
     }
 
     public DecisionData decisionData() {

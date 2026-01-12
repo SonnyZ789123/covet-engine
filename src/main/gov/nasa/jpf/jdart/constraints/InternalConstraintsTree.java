@@ -36,7 +36,7 @@ public class InternalConstraintsTree {
   private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
   
   
-  private final Node root = new Node(null);
+  private final Node root = new Node(null, null);
   /** This is the current node in our EXPLORATION */
   private Node current = root;
   /**

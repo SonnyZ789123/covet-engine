@@ -57,7 +57,7 @@ public final class DecisionData extends NodeData {
 
     public Node getOrCreateChild(int idx) {
         if(!hasChild(idx)) {
-            children[idx] = new Node(node);
+            children[idx] = new Node(node, nextInstructions[idx]);
         }
         return children[idx];
     }
