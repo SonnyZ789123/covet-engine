@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class <methodProps.className> {
+public class <className> {
 
 <if(!methodProps.isStaticMethod)>
     private <methodProps.methodClassName> obj;
@@ -23,6 +23,7 @@ public class <methodProps.className> {
 <if(!t.executionPath.throwsExceptionTest)>
     <if(methodProps.isStaticMethod)>
         <methodProps.returnType> result = <t.executionPath.call>;
+
     <else>
         <methodProps.returnType> result = obj.<t.executionPath.call>;
     <endif>
