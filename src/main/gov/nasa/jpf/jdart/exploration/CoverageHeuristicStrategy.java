@@ -24,13 +24,23 @@ import java.util.*;
 public class CoverageHeuristicStrategy implements ExplorationStrategy {
     private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
 
+    private static final String CONFIG_FILE = "/jdart-project/data/coverage_heuristic.config";
+
     public static final MethodInstructionCoverage methodInstructionCoverage;
     public static final boolean shouldIgnoreCoveredPaths;
 
     static {
         try {
+            Properties properties = readConfiguration();
+            shouldIgnoreCoveredPaths = Boolean.parseBoolean(
+                    properties.getProperty("jdart.ignore_covered_paths", "false"));
+            String instructionPathsFilePath = properties.getProperty(
+                    "jdart.instruction_paths_file",
+                    "/jdart-project/data/jdart_instruction_paths.json"
+            );
+
             // Adjust path as needed (absolute or relative to working dir)
-            Reader reader = new FileReader("/jdart-project/data/jdart_instruction_paths.json");
+            Reader reader = new FileReader(instructionPathsFilePath);
 
             Gson gson = new GsonBuilder()
                     .setPrettyPrinting()
@@ -42,10 +52,6 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
             methodInstructionCoverage = new MethodInstructionCoverage(instructionPathsByMethod);
 
             reader.close();
-
-            Properties properties = readConfiguration();
-            shouldIgnoreCoveredPaths = Boolean.parseBoolean(
-                    properties.getProperty("jdart.ignore_covered_paths", "false"));
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize CoverageHeuristicStrategy: " + e);
         }
@@ -54,16 +60,14 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
     private static Properties readConfiguration() {
         Properties props = new Properties();
 
-        try (FileReader reader =
-                     new FileReader("/jdart-project/data/coverage_heuristic.config")) {
+        try (FileReader reader = new FileReader(CONFIG_FILE)) {
             props.load(reader);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to read coverage_heuristic.config", e);
+            throw new RuntimeException("Failed to read configuration file", e);
         }
 
         return props;
     }
-
 
     private final Queue<WeightedNode> nodesFrontierQueue;
     private Node previousTargetedNode;
