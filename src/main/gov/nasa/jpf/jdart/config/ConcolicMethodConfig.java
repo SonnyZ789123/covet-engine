@@ -175,6 +175,10 @@ public class ConcolicMethodConfig {
   public List<ParamConfig> getParams() {
     return methodSpec.getParams();
   }
+
+  public MethodSpec getMethodSpec() {
+    return methodSpec;
+  }
   
   public void setMethod(MethodSpec methodSpec) {
     this.methodSpec = methodSpec;
