@@ -205,7 +205,7 @@ public class ConcolicMethodExplorer {
       InstructionCoverage cov = methodInstructionCoverage.getInstructionCoverage(mi.getFullName());
 
       if (cov.isInstructionCovered(insn.getInstructionIndex())) {
-        constraintsTree.finish(PathResult.dontKnow());
+        constraintsTree.finish(PathResult.ignore());
         return true;
       }
     }

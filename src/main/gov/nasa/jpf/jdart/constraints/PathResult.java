@@ -103,14 +103,15 @@ public class PathResult {
   public static PathResult dontKnow() {
     return DONT_KNOW;
   }
-  
-  
+
   public static PathResult DONT_KNOW = new PathResult(PathState.DONT_KNOW);
-  
-  
-  
-  
-  
+
+  public static PathResult ignore() {
+    return IGNORE;
+  }
+
+  public static PathResult IGNORE = new PathResult(PathState.IGNORE);
+
   private final PathState state;
   
   protected PathResult(PathState state) {

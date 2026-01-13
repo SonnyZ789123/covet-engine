@@ -73,10 +73,10 @@ public class TestSuiteGenerator {
 
     ArrayList<TestCase> tests = new ArrayList<>();
     for (Path p : analysis.getConstraintsTree().getAllPaths()) {
-      logger.finest("[TestSuiteGenerator] Generating test case for path: " + p);
       Valuation val = p.getValuation();
+      logger.finest("[TestSuiteGenerator] Generating test case for path: " + p + ((val == null) ? " -> ignore" : ""));
       if (val == null) {
-        // dont know cases
+        // dont know and ignore path results
         continue;
       }
 
