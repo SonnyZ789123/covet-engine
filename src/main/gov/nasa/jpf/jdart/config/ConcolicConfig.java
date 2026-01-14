@@ -26,8 +26,7 @@ import gov.nasa.jpf.jdart.exploration.ExplorationStrategy;
 import gov.nasa.jpf.jdart.termination.NeverTerminate;
 import gov.nasa.jpf.jdart.termination.TerminationStrategy;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -193,7 +192,7 @@ public class ConcolicConfig {
     if (!conf.hasValue("jdart.termination")) {
       return new NeverTerminate();     
     }
-    return parseTerminationStrategy(conf.getProperty("jdart.termination"));
+    return parseTerminationStrategy(conf.getProperty("jdart.termination").trim());
   }
     
   private static TerminationStrategy parseTerminationStrategy(String line) {
@@ -229,6 +228,50 @@ public class ConcolicConfig {
     if (!conf.hasValue("jdart.exploration")) {
       return new DFSStrategy();
     }
-    return conf.getEssentialInstance("jdart.exploration", ExplorationStrategy.class);
+    return parseExplorationStrategy(conf.getProperty("jdart.exploration").trim(), conf);
   }
+
+  private static ExplorationStrategy parseExplorationStrategy(String propertyString, Config conf) {
+    String className = parseClassName(propertyString);
+    String[] strArgs = parseConstructorArgs(propertyString);
+
+    Class<?>[] argTypes = new Class<?>[strArgs.length];
+    Arrays.fill(argTypes, String.class);
+
+    Object[] args = strArgs;
+
+    return conf.getInstance(
+            "jdart.exploration",
+            className,
+            ExplorationStrategy.class,
+            argTypes,
+            args
+    );
+  }
+
+  private static String parseClassName(String spec) {
+    int lparen = spec.indexOf('(');
+    return (lparen < 0) ? spec.trim() : spec.substring(0, lparen).trim();
+  }
+
+  private static String[] parseConstructorArgs(String spec) {
+    int lparen = spec.indexOf('(');
+    int rparen = spec.lastIndexOf(')');
+
+    if (lparen < 0 || rparen < lparen) {
+      return new String[0];
+    }
+
+    String argsPart = spec.substring(lparen + 1, rparen).trim();
+    if (argsPart.isEmpty()) {
+      return new String[0];
+    }
+
+    String[] rawArgs = argsPart.split(",");
+    for (int i = 0; i < rawArgs.length; i++) {
+      rawArgs[i] = rawArgs[i].trim();
+    }
+    return rawArgs;
+  }
+
 }
