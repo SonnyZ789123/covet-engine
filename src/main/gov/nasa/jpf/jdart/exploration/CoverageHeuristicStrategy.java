@@ -24,14 +24,31 @@ import java.util.*;
 public class CoverageHeuristicStrategy implements ExplorationStrategy {
     private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
 
-    private static final String CONFIG_FILE = "/jdart-project/data/coverage_heuristic.config";
+    private static final String DEFAULT_CONFIG_FILE = "/jdart-project/data/coverage_heuristic.conf";
 
-    public static final MethodInstructionCoverage methodInstructionCoverage;
-    public static final boolean shouldIgnoreCoveredPaths;
+    public final MethodInstructionCoverage methodInstructionCoverage;
+    public final boolean shouldIgnoreCoveredPaths;
 
-    static {
+    private Properties readConfiguration(String configFilePath) {
+        Properties props = new Properties();
+
+        try (FileReader reader = new FileReader(configFilePath != null ? configFilePath : DEFAULT_CONFIG_FILE)) {
+            props.load(reader);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to read configuration file", e);
+        }
+
+        return props;
+    }
+
+    private final Queue<WeightedNode> nodesFrontierQueue;
+    private Node previousTargetedNode;
+    private final Map<MethodInfo, InstructionCoverage> coverageCache = new IdentityHashMap<>();
+
+
+    public CoverageHeuristicStrategy(String configFilePath) {
         try {
-            Properties properties = readConfiguration();
+            Properties properties = readConfiguration(configFilePath);
             shouldIgnoreCoveredPaths = Boolean.parseBoolean(
                     properties.getProperty("jdart.ignore_covered_paths", "false"));
             String instructionPathsFilePath = properties.getProperty(
@@ -55,26 +72,7 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize CoverageHeuristicStrategy: " + e);
         }
-    }
 
-    private static Properties readConfiguration() {
-        Properties props = new Properties();
-
-        try (FileReader reader = new FileReader(CONFIG_FILE)) {
-            props.load(reader);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to read configuration file", e);
-        }
-
-        return props;
-    }
-
-    private final Queue<WeightedNode> nodesFrontierQueue;
-    private Node previousTargetedNode;
-    private final Map<MethodInfo, InstructionCoverage> coverageCache = new IdentityHashMap<>();
-
-
-    public CoverageHeuristicStrategy() {
         // Initialize a priority queue: lower weight, and lower depth have higher priority
         nodesFrontierQueue = new PriorityQueue<>(
                 Comparator.comparingDouble(WeightedNode::getWeight)

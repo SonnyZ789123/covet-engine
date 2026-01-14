@@ -190,11 +190,13 @@ public class ConcolicMethodExplorer {
 
   public boolean checkCoveredPathOnCompletion() {
     if (explorationStrategy instanceof CoverageHeuristicStrategy) {
-      if (!CoverageHeuristicStrategy.shouldIgnoreCoveredPaths) {
+      CoverageHeuristicStrategy coverageHeuristicStrategy = (CoverageHeuristicStrategy) explorationStrategy;
+
+      if (!coverageHeuristicStrategy.shouldIgnoreCoveredPaths) {
         return false;
       }
 
-      MethodInstructionCoverage methodInstructionCoverage = CoverageHeuristicStrategy.methodInstructionCoverage;
+      MethodInstructionCoverage methodInstructionCoverage = coverageHeuristicStrategy.methodInstructionCoverage;
       InstructionBranch instructionBranch = constraintsTree.getCurrentTarget().getInstructionBranch();
       if (instructionBranch == null) {
         return false;
