@@ -107,10 +107,10 @@ public class ConstraintsPath {
     }
 
     public SolverContextSolveResult solveCurrentPath() {
-        logger.finer("Finding new valuation");
+        logger.finest("Finding new valuation for path: " + expectedPath);
         Valuation val = new Valuation();
         ConstraintSolver.Result res = solverCtx.solve(val);
-        logger.finer("Found: " + res + " : " + val);
+        logger.finest("Found: " + res + " : " + val);
         return new SolverContextSolveResult(val, res);
     }
 }
