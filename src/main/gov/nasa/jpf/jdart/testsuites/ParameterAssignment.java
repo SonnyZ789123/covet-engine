@@ -30,12 +30,32 @@ public class ParameterAssignment {
             if (objVal == null) {  //the parameter is treated as concrete
                 objVal = defaultParams[i];
             }
-            call.append(objVal).append((objVal instanceof Float) ? "f" : "").append(",");
+
+            String mappedVal = mapValueToString(objVal);
+            call.append(mappedVal).append(", ");
         }
-        call = new StringBuilder(call.substring(0, call.length() - 1));
+        call = new StringBuilder(call.substring(0, call.length() - 2));
 
         call.append(")");
         return call.toString();
+    }
+
+    private static String mapValueToString(Object val) {
+        if (val instanceof Character) {
+            return "'" + val + "'";
+        } else if (val instanceof String) {
+            return "\"" + val + "\"";
+        } else if (val instanceof Float) {
+            return val + "f";
+        } else if (val instanceof Long) {
+            return val + "L";
+        } else if (val instanceof Short) {
+            return "(short) " + val;
+        } else if (val instanceof Byte) {
+            return "(byte) " + val;
+        } else {
+            return String.valueOf(val);
+        }
     }
 
 }
