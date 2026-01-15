@@ -175,7 +175,8 @@ public class ConcolicMethodExplorer {
       ElementInfo ei = ti.getHeap().get(ref);
       if(ei == null)
         return;
-      
+
+      // TODO: handle non-primitive return types -> see ConcolicUtil
     }
     else { // primitive
       Type<?> type = ConcolicUtil.forTypeCode(rtc);

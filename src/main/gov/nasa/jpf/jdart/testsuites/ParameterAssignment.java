@@ -27,11 +27,11 @@ public class ParameterAssignment {
         for (int i = 0; i < params.size(); i++) {
             ParamConfig pc = params.get(i);
             Object objVal = val.getValue(pc.getName());
-            if (objVal == null) {  //the parameter is treated as concrete
-                objVal = defaultParams[i];
+            if (objVal == null) { // unsupported non-primitive type
+                objVal = "null";
             }
 
-            String mappedVal = mapValueToString(objVal);
+            String mappedVal = mapPrimitiveValueToString(objVal);
             call.append(mappedVal).append(", ");
         }
         call = new StringBuilder(call.substring(0, call.length() - 2));
@@ -40,11 +40,9 @@ public class ParameterAssignment {
         return call.toString();
     }
 
-    private static String mapValueToString(Object val) {
+    private static String mapPrimitiveValueToString(Object val) {
         if (val instanceof Character) {
             return "'" + val + "'";
-        } else if (val instanceof String) {
-            return "\"" + val + "\"";
         } else if (val instanceof Float) {
             return val + "f";
         } else if (val instanceof Long) {
