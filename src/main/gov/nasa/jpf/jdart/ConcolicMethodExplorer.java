@@ -393,11 +393,11 @@ public class ConcolicMethodExplorer {
     for(SymbolicVariable<?> sv : symContext.getSymbolicVars())
       sv.readInitial(initValuation, sf);
     currValuation = initValuation;
-    logger.finest(">>>>>>>>>>>>>>>> First execution with valuation " + currValuation + "\n\n");
+    logger.finest("\n\n>>>>>>>>>>>>>>>> First execution with valuation " + currValuation);
   }
   
   public void prepareReexecution(StackFrame sf) {
-    logger.finest(">>>>>>>>>>>>>>>> Reexecuting with valuation " + currValuation + "\n\n");
+    logger.finest("\n\n>>>>>>>>>>>>>>>> Reexecuting with valuation " + currValuation);
     for(SymbolicVariable<?> sv : symContext.getSymbolicVars())
       sv.apply(currValuation, sf);
   }

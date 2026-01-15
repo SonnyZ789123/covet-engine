@@ -96,9 +96,7 @@ public class ConcolicPerturbator implements OperandPerturbator {
    * @return 
    */
   @Override
-  public boolean perturb(ChoiceGenerator<?>cg, StackFrame frame) {    
-    logger.finest("Producer.perturb(): " + methodInfo.getFullName());    
-    
+  public boolean perturb(ChoiceGenerator<?>cg, StackFrame frame) {
     // TODO: works for now. check if this is the expected behavior.
     if(explorer.hasMoreChoices()) {
       explorer.newPath(frame);

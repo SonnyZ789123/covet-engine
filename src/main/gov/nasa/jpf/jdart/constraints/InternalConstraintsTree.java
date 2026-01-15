@@ -311,6 +311,8 @@ public class InternalConstraintsTree {
 
   public void finish(PathResult result) {
     current.markResultNode(result);
+
+    logger.finest("Finished execution, explored path: " + constraintsPath.getExpectedPath() + ", result=" + result + "\n");
   }
 
   public void failCurrentTarget() {
