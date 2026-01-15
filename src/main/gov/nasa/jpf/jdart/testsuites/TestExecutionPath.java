@@ -85,6 +85,10 @@ public class TestExecutionPath {
 
   private void fillMethodAssertions() {
     if (this.path.getState() == PathState.OK) {
+      if (path.getPostCondition().getReturn() == null) { // non-primitive data type or void method
+        return;
+      }
+
       ST st = new ST("assertEquals(<expected>, result)");
       st.add("expected", path.getPostCondition().getReturn().conc);
       assertions.add(st.render());
