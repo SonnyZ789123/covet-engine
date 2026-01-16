@@ -43,9 +43,9 @@ public class TestSuite implements Iterable<TestSubSuite> {
     this.testCases.addAll(tests);
   }
 
-  public TestSuite(String packageName, String SuiteName, Method methodUT, Collection<TestCase> tests, int subSuiteSize) {
+  public TestSuite(String packageName, String suiteName, Method methodUT, Collection<TestCase> tests, int subSuiteSize) {
     this.packageName = packageName;
-    this.suiteName = SuiteName;
+    this.suiteName = suiteName;
     this.methodUT = methodUT;
     this.subSuiteSize = subSuiteSize;
     this.testCases.addAll(tests);
