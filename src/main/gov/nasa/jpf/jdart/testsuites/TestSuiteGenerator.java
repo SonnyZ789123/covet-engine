@@ -61,11 +61,13 @@ public class TestSuiteGenerator {
     String dir = conf.getString("jdart.tests.dir");
     String pkg = conf.getString("jdart.tests.pkg");
     ConcolicMethodConfig mc = analysis.getMethodConfig();
-    String suiteName = conf.getString("jdart.tests.suitename",
-            Character.toUpperCase(mc.getMethodName().charAt(0)) +
-                    mc.getMethodName().substring(1) + "Test");
 
     Method targetMethod = getTargetMethod(mc, conf.getStringArray("classpath"));
+
+    String suiteName = conf.getString("jdart.tests.suitename",
+            targetMethod.getDeclaringClass().getSimpleName() +
+                    Character.toUpperCase(mc.getMethodName().charAt(0)) +
+                    mc.getMethodName().substring(1) + "Test");
 
     if (pkg == null || pkg.isEmpty()) {
       pkg = targetMethod.getDeclaringClass().getPackage().getName();
