@@ -6,7 +6,10 @@ import gov.nasa.jpf.vm.Instruction;
 public final class Node {
     private final Node parent;
     private final int depth;
-    /** Alternative depth - how many times have we explored this node */
+    /**
+     * Alternative depth, represents how many times the constraint solver has tried to generate a valuation that
+     * leads to this node.
+     */
     private int altDepth;
 
     private NodeData data;
