@@ -204,6 +204,10 @@ public class ConcolicMethodExplorer {
       }
 
       Instruction insn = instructionBranch.getInstruction();
+      if (insn == null) { // This is possible for branches created by uncaught exceptions (e.g., div by zero)
+        return false;
+      }
+
       MethodInfo mi = insn.getMethodInfo();
       InstructionCoverage cov = methodInstructionCoverage.getInstructionCoverage(mi.getFullName());
 

@@ -26,7 +26,6 @@ import gov.nasa.jpf.jdart.ConcolicUtil;
 import gov.nasa.jpf.jdart.constraints.tree.InstructionBranch;
 import gov.nasa.jpf.jvm.bytecode.IfInstruction;
 import gov.nasa.jpf.vm.Instruction;
-import gov.nasa.jpf.vm.MethodInfo;
 import gov.nasa.jpf.vm.StackFrame;
 import gov.nasa.jpf.vm.ThreadInfo;
 
