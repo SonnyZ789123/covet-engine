@@ -9,13 +9,17 @@ public class <className> {
 
 <if(!methodProps.isStaticMethod)>
     private <methodProps.methodClassName> obj;
+<endif>
 
     @BeforeEach
     void setUp() {
+        // Initialize tests
+
+        <if(!methodProps.isStaticMethod)>
         // Complete the initialization of obj as needed
         obj = new <methodProps.methodClassName>();
+        <endif>
     }
-<endif>
 
 <tests:{t |
     @Test
