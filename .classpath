@@ -14,5 +14,6 @@
 	<classpathentry kind="lib" path="lib/gson-2.2.4.jar"/>
 	<classpathentry kind="lib" path="lib/guava-14.0.1.jar"/>
 	<classpathentry kind="lib" path="lib/ST-4.0.5.jar"/>
+	<classpathentry kind="lib" path="lib/intellij-coverage-model-2.0.0.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
