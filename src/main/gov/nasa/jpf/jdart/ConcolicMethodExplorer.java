@@ -35,8 +35,9 @@ import gov.nasa.jpf.jdart.constraints.tree.BranchEffect;
 import gov.nasa.jpf.jdart.constraints.tree.InstructionBranch;
 import gov.nasa.jpf.jdart.exploration.CoverageHeuristicStrategy;
 import gov.nasa.jpf.jdart.exploration.ExplorationStrategy;
-import gov.nasa.jpf.jdart.exploration.coverage.pathcov.InstructionCoverage;
-import gov.nasa.jpf.jdart.exploration.coverage.pathcov.MethodInstructionCoverage;
+import gov.nasa.jpf.jdart.exploration.coverage.ClassCoverage;
+import gov.nasa.jpf.jdart.exploration.coverage.CoverageReport;
+import gov.nasa.jpf.jdart.exploration.coverage.CoverageType;
 import gov.nasa.jpf.jdart.objects.SymbolicObjectsContext;
 import gov.nasa.jpf.util.JPFLogger;
 import gov.nasa.jpf.vm.ClassInfo;
@@ -197,7 +198,7 @@ public class ConcolicMethodExplorer {
         return false;
       }
 
-      MethodInstructionCoverage methodInstructionCoverage = coverageHeuristicStrategy.methodInstructionCoverage;
+      CoverageReport coverageReport = coverageHeuristicStrategy.coverageReport;
       InstructionBranch instructionBranch = constraintsTree.getCurrentTarget().getInstructionBranch();
       if (instructionBranch == null) {
         return false;
@@ -209,9 +210,9 @@ public class ConcolicMethodExplorer {
       }
 
       MethodInfo mi = insn.getMethodInfo();
-      InstructionCoverage cov = methodInstructionCoverage.getInstructionCoverage(mi.getFullName());
+      ClassCoverage cov = coverageReport.getClassCoverage(mi.getClassName());
 
-      if (cov.isInstructionCovered(insn.getInstructionIndex())) {
+      if (cov.getLineCoverageType(insn.getLineNumber()) == CoverageType.FULL) {
         constraintsTree.finish(PathResult.ignore());
         return true;
       }

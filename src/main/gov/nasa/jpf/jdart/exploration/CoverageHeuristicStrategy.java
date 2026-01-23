@@ -2,13 +2,14 @@ package gov.nasa.jpf.jdart.exploration;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
+import com.kuleuven.coverage.model.CoverageReportDTO;
 import gov.nasa.jpf.JPF;
 import gov.nasa.jpf.constraints.api.Valuation;
 import gov.nasa.jpf.jdart.constraints.InternalConstraintsTree;
+import gov.nasa.jpf.jdart.exploration.coverage.ClassCoverage;
+import gov.nasa.jpf.jdart.exploration.coverage.CoverageReport;
+import gov.nasa.jpf.jdart.exploration.coverage.CoverageType;
 import gov.nasa.jpf.jdart.exploration.coverage.WeightedNode;
-import gov.nasa.jpf.jdart.exploration.coverage.pathcov.InstructionCoverage;
-import gov.nasa.jpf.jdart.exploration.coverage.pathcov.MethodInstructionCoverage;
 import gov.nasa.jpf.jdart.constraints.tree.DecisionData;
 import gov.nasa.jpf.jdart.constraints.tree.Node;
 import gov.nasa.jpf.jdart.constraints.tree.NodeType;
@@ -18,7 +19,6 @@ import gov.nasa.jpf.vm.MethodInfo;
 
 import java.io.FileReader;
 import java.io.Reader;
-import java.lang.reflect.Type;
 import java.util.*;
 
 public class CoverageHeuristicStrategy implements ExplorationStrategy {
@@ -26,7 +26,7 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
 
     private static final String DEFAULT_CONFIG_FILE = "/jdart-project/data/coverage_heuristic.conf";
 
-    public final MethodInstructionCoverage methodInstructionCoverage;
+    public final CoverageReport coverageReport;
     public final boolean shouldIgnoreCoveredPaths;
 
     private Properties readConfiguration(String configFilePath) {
@@ -43,30 +43,30 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
 
     private final Queue<WeightedNode> nodesFrontierQueue;
     private Node previousTargetedNode;
-    private final Map<MethodInfo, InstructionCoverage> coverageCache = new IdentityHashMap<>();
+    private final Map<MethodInfo, ClassCoverage> coverageCache = new IdentityHashMap<>();
 
 
     public CoverageHeuristicStrategy(String configFilePath) {
         try {
             Properties properties = readConfiguration(configFilePath);
             shouldIgnoreCoveredPaths = Boolean.parseBoolean(
-                    properties.getProperty("jdart.ignore_covered_paths", "false"));
-            String instructionPathsFilePath = properties.getProperty(
-                    "jdart.instruction_paths_file",
-                    "/jdart-project/data/jdart_instruction_paths.json"
+                    properties.getProperty(
+                            "jdart.exploration.coverage_heuristic.ignore_covered_paths",
+                            "false"));
+            String coverageDataPath = properties.getProperty(
+                    "jdart.exploration.coverage_heuristic.coverage_data_path",
+                    "/data/coverage/coverage_data.json"
             );
 
             // Adjust path as needed (absolute or relative to working dir)
-            Reader reader = new FileReader(instructionPathsFilePath);
+            Reader reader = new FileReader(coverageDataPath);
 
             Gson gson = new GsonBuilder()
                     .setPrettyPrinting()
                     .create();
 
-            Type type = new TypeToken<Map<String, List<int[]>>>() {}.getType();
-            Map<String, List<int[]>> instructionPathsByMethod = gson.fromJson(reader, type);
-
-            methodInstructionCoverage = new MethodInstructionCoverage(instructionPathsByMethod);
+            CoverageReportDTO coverageReportFromJson = gson.fromJson(reader, CoverageReportDTO.class);
+            coverageReport = new CoverageReport(coverageReportFromJson);
 
             reader.close();
         } catch (Exception e) {
@@ -83,11 +83,12 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
 
     private double computeWeight(Instruction instruction) {
         MethodInfo mi = instruction.getMethodInfo();
-        InstructionCoverage cov = coverageCache.computeIfAbsent(mi,
-                m -> methodInstructionCoverage.getInstructionCoverage(m.getFullName())
+
+        ClassCoverage cov = coverageCache.computeIfAbsent(mi,
+                m -> coverageReport.getClassCoverage(mi.getClassName())
         );
 
-        return cov.isInstructionCovered(instruction.getInstructionIndex()) ? 1 : 0;
+        return cov.getLineCoverageType(instruction.getLineNumber()) == CoverageType.FULL ? 1 : 0;
     }
 
 
