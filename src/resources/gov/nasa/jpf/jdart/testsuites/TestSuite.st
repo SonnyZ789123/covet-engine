@@ -1,6 +1,6 @@
 package <packageName>;
 
-<if(!methodProps.isStaticMethod)>import org.junit.jupiter.api.BeforeEach;<endif>
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
