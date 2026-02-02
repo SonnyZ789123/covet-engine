@@ -37,8 +37,9 @@ import java.util.List;
  */
 public class TestSuiteGenerator {
 
-  private static final JPFLogger logger = JPF.getLogger("jdart.testsuites");
-  
+  private static final JPFLogger testGenerationLogger = JPF.getLogger("jdart.testsuites");
+  private static final JPFLogger logger = JPF.getLogger("jdart");
+
   private final TestSuite suite;
   
   private final String outDir;
@@ -51,6 +52,7 @@ public class TestSuiteGenerator {
   public void generate() throws IOException {
     TestSuiteSTWriter writer = new TestSuiteSTWriter(suite, outDir);
     writer.write();
+    logger.info("[TestSuiteGenerator] Test suite generated at: " + outDir);
   }
   
   public void run() {
@@ -76,7 +78,7 @@ public class TestSuiteGenerator {
     ArrayList<TestCase> tests = new ArrayList<>();
     for (Path p : analysis.getConstraintsTree().getAllPaths()) {
       Valuation val = p.getValuation();
-      logger.finest("[TestSuiteGenerator] Generating test case for path: " + p + ((val == null) ? " -> ignore" : ""));
+      testGenerationLogger.finest("[TestSuiteGenerator] Generating test case for path: " + p + ((val == null) ? " -> ignore" : ""));
       if (val == null) {
         // dont know and ignore path results
         continue;
