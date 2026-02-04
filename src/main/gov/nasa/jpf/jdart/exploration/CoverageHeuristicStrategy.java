@@ -7,6 +7,8 @@ import com.kuleuven.blockmap.model.BlockMapDTO;
 import gov.nasa.jpf.JPF;
 import gov.nasa.jpf.constraints.api.Valuation;
 import gov.nasa.jpf.jdart.constraints.InternalConstraintsTree;
+import gov.nasa.jpf.jdart.constraints.PathResult;
+import gov.nasa.jpf.jdart.constraints.tree.InstructionBranch;
 import gov.nasa.jpf.jdart.exploration.coverage.*;
 import gov.nasa.jpf.jdart.constraints.tree.DecisionData;
 import gov.nasa.jpf.jdart.constraints.tree.Node;
@@ -158,5 +160,42 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
         }
 
         return ctx.getPresetValues();
+    }
+
+    public boolean pathIsBlockCovered(Node finalTarget) {
+        Node currentNode = finalTarget;
+        while (currentNode != null) {
+            InstructionBranch instructionBranch = currentNode.getInstructionBranch();
+            if (instructionBranch == null) {
+                return false;
+            }
+
+            Instruction insn = instructionBranch.getInstruction();
+            if (insn == null) { // This is possible for branches created by uncaught exceptions (e.g., div by zero)
+                return false;
+            }
+
+            MethodInfo mi = insn.getMethodInfo();
+            MethodBlockMapCoverage cov = blockMapCoverage.getMethodBlockMapCoverage(mi.getFullName());
+
+            if (cov == null) {
+                return false;
+            }
+
+            BlockCoverageDataDTO.CoverageState state = cov.getCoverageStateForLine(insn.getLineNumber());
+
+            // The line does not map to any block, is this possible?
+            if (state == null) {
+                continue;
+            }
+
+            if (state != BlockCoverageDataDTO.CoverageState.COVERED) {
+                return false;
+            }
+
+            currentNode = currentNode.getParent();
+        }
+
+        return true;
     }
 }

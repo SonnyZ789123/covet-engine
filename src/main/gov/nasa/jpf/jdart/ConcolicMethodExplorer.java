@@ -198,27 +198,13 @@ public class ConcolicMethodExplorer {
         return false;
       }
 
-      BlockMapCoverage blockMapCoverage = coverageHeuristicStrategy.blockMapCoverage;
-      InstructionBranch instructionBranch = constraintsTree.getCurrentTarget().getInstructionBranch();
-      if (instructionBranch == null) {
-        return false;
-      }
+      boolean coveredPath = coverageHeuristicStrategy.pathIsBlockCovered(constraintsTree.getCurrentTarget());
 
-      Instruction insn = instructionBranch.getInstruction();
-      if (insn == null) { // This is possible for branches created by uncaught exceptions (e.g., div by zero)
-        return false;
-      }
-
-      MethodInfo mi = insn.getMethodInfo();
-      MethodBlockMapCoverage cov = blockMapCoverage.getMethodBlockMapCoverage(mi.getFullName());
-
-      if (cov == null) {
-        return false;
-      }
-
-      if (cov.getCoverageStateForLine(insn.getLineNumber()) == BlockCoverageDataDTO.CoverageState.COVERED) {
-        constraintsTree.finish(PathResult.ignore());
-        return true;
+      if (!coveredPath) {
+          return false;
+      } else {
+          constraintsTree.finish(PathResult.ignore());
+          return true;
       }
     }
     return false;
