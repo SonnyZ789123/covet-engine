@@ -2,14 +2,12 @@ package gov.nasa.jpf.jdart.exploration;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.kuleuven.coverage.model.CoverageReportDTO;
+import com.kuleuven.blockmap.model.BlockCoverageDataDTO;
+import com.kuleuven.blockmap.model.BlockMapDTO;
 import gov.nasa.jpf.JPF;
 import gov.nasa.jpf.constraints.api.Valuation;
 import gov.nasa.jpf.jdart.constraints.InternalConstraintsTree;
-import gov.nasa.jpf.jdart.exploration.coverage.ClassCoverage;
-import gov.nasa.jpf.jdart.exploration.coverage.CoverageReport;
-import gov.nasa.jpf.jdart.exploration.coverage.CoverageType;
-import gov.nasa.jpf.jdart.exploration.coverage.WeightedNode;
+import gov.nasa.jpf.jdart.exploration.coverage.*;
 import gov.nasa.jpf.jdart.constraints.tree.DecisionData;
 import gov.nasa.jpf.jdart.constraints.tree.Node;
 import gov.nasa.jpf.jdart.constraints.tree.NodeType;
@@ -24,9 +22,9 @@ import java.util.*;
 public class CoverageHeuristicStrategy implements ExplorationStrategy {
     private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
 
-    private static final String DEFAULT_CONFIG_FILE = "/jdart-project/data/coverage_heuristic.conf";
+    private static final String DEFAULT_CONFIG_FILE = "/jdart-project/data/coverage_heuristic.config";
 
-    public final CoverageReport coverageReport;
+    public final BlockMapCoverage blockMapCoverage;
     public final boolean shouldIgnoreCoveredPaths;
 
     private Properties readConfiguration(String configFilePath) {
@@ -43,7 +41,7 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
 
     private final Queue<WeightedNode> nodesFrontierQueue;
     private Node previousTargetedNode;
-    private final Map<MethodInfo, ClassCoverage> coverageCache = new IdentityHashMap<>();
+    private final Map<MethodInfo, MethodBlockMapCoverage> coverageCache = new IdentityHashMap<>();
 
 
     public CoverageHeuristicStrategy(String configFilePath) {
@@ -55,7 +53,7 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
                             "false"));
             String coverageDataPath = properties.getProperty(
                     "jdart.exploration.coverage_heuristic.coverage_data_path",
-                    "/data/coverage/coverage_data.json"
+                    "/data/blockmaps/icfg_block_map.json"
             );
 
             // Adjust path as needed (absolute or relative to working dir)
@@ -65,8 +63,8 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
                     .setPrettyPrinting()
                     .create();
 
-            CoverageReportDTO coverageReportFromJson = gson.fromJson(reader, CoverageReportDTO.class);
-            coverageReport = new CoverageReport(coverageReportFromJson);
+            BlockMapDTO blockMapFromJson = gson.fromJson(reader, BlockMapDTO.class);
+            blockMapCoverage = new BlockMapCoverage(blockMapFromJson);
 
             reader.close();
         } catch (Exception e) {
@@ -84,11 +82,15 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
     private double computeWeight(Instruction instruction) {
         MethodInfo mi = instruction.getMethodInfo();
 
-        ClassCoverage cov = coverageCache.computeIfAbsent(mi,
-                m -> coverageReport.getClassCoverage(mi.getClassName())
+        MethodBlockMapCoverage cov = coverageCache.computeIfAbsent(mi,
+                m -> blockMapCoverage.getMethodBlockMapCoverage(mi.getFullName())
         );
 
-        return cov.getLineCoverageType(instruction.getLineNumber()) == CoverageType.FULL ? 1 : 0;
+        if (cov == null) {
+            return 0;
+        }
+
+        return cov.getCoverageStateForLine(instruction.getLineNumber()) == BlockCoverageDataDTO.CoverageState.COVERED ? 1 : 0;
     }
 
 
