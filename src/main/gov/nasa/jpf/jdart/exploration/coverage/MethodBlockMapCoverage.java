@@ -24,6 +24,12 @@ public class MethodBlockMapCoverage {
         }
     }
 
+    /**
+     * Get the coverage state for a block, given the line number of a statement in that block.
+     *
+     * @param line line number of a statement in the block
+     * @return the coverage state for the block, or null if the line does not map to any block
+     */
     public BlockCoverageDataDTO.CoverageState getCoverageStateForLine(int line) {
         BlockDataDTO blockData = lineToBlockDataMap.get(line);
         if (blockData == null) {
