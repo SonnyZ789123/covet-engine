@@ -264,6 +264,7 @@ public class JDart implements JPFShell {
         logger.info("# OK paths: " + ca.getConstraintsTree().getCoveredPaths().size());
         logger.info("# ERROR paths: " + ca.getConstraintsTree().getErrorPaths().size());
         logger.info("# DONT_KNOW paths: " + ca.getConstraintsTree().getDontKnowPaths().size());
+        logger.info("# Average path length: " + ca.getConstraintsTree().getAvgPathLength());
         logger.info("");
         
         logger.info("-------Valuation Statistics-------");

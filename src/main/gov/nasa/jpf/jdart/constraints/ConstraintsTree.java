@@ -269,6 +269,28 @@ public class ConstraintsTree {
     }
     return ret;
   }
+
+  public Double getAvgPathLength() {
+    Collection<Node> doneLeaves = getDoneLeaves();
+    if (doneLeaves.isEmpty()) {
+      return 0.0;
+    }
+    List<Integer> lengths = new ArrayList<>();
+    for (Node n : doneLeaves) {
+      lengths.add(getPathLength(n));
+    }
+    return lengths.stream().mapToInt(i -> i).average().orElse(0.0);
+  }
+
+  private Integer getPathLength(Node n) {
+    int sum = 0;
+    Node curr = n;
+    while (curr != null) {
+      sum++;
+      curr = curr.parent;
+    }
+    return sum;
+  }
   
   @Deprecated
   public boolean isEmpty() {
