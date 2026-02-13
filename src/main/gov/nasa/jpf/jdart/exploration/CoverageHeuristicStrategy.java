@@ -167,7 +167,10 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
         while (currentNode != null) {
             InstructionBranch instructionBranch = currentNode.getInstructionBranch();
             if (instructionBranch == null) {
-                return false;
+                // The root node does not have an associated instruction branch.
+                // Some exception branches (e.g., division by zero) might not have an associated instruction.
+                currentNode = currentNode.getParent();
+                continue;
             }
 
             Instruction insn = instructionBranch.getInstruction();
@@ -186,6 +189,7 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
 
             // The line does not map to any block, is this possible?
             if (state == null) {
+                currentNode = currentNode.getParent();
                 continue;
             }
 
