@@ -1,9 +1,9 @@
 package <packageName>;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.Assert.assertEquals;
 
 public class <className> {
 
@@ -11,8 +11,8 @@ public class <className> {
     private <methodProps.methodClassName> obj;
 <endif>
 
-    @BeforeEach
-    void setUp() {
+    @Before
+    public void setUp() {
         // Initialize tests
 
         <if(!methodProps.isStaticMethod)>
