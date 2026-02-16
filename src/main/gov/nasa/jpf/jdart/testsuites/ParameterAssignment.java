@@ -40,7 +40,7 @@ public class ParameterAssignment {
         return call.toString();
     }
 
-    private static String mapPrimitiveValueToString(Object val) {
+    public static String mapPrimitiveValueToString(Object val) {
         if (val instanceof Character) {
             return "'" + val + "'";
         } else if (val instanceof Float) {
