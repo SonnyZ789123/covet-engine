@@ -90,7 +90,7 @@ public class TestExecutionPath {
       }
 
       ST st = new ST("assertEquals(<expected>, result)");
-      st.add("expected", path.getPostCondition().getReturn().conc);
+      st.add("expected", ParameterAssignment.mapPrimitiveValueToString(path.getPostCondition().getReturn().conc));
       assertions.add(st.render());
     }
   }
