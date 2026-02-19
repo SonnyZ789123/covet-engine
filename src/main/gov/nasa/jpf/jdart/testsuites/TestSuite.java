@@ -66,14 +66,14 @@ public class TestSuite implements Iterable<TestSubSuite> {
     // For only one sub-suite, don't append an index to the name
     boolean singleSubSuite = this.testCases.size() <= this.subSuiteSize;
 
-    int offset = 0;
-    for (int i=0 ; i < this.testCases.size() ; i += this.subSuiteSize) {
+    int i = 0;
+    for (int offset=0 ; offset < this.testCases.size() ; offset += this.subSuiteSize) {
       TestSubSuite sub = new TestSubSuite(
               singleSubSuite ? this.suiteName : this.suiteName + i,
               this.testCases.subList(offset, min(offset + this.subSuiteSize, this.testCases.size())
               ));
       subSuites.add(sub);
-      offset += this.subSuiteSize;
+      i += 1;
     }    
     return subSuites.iterator();
   }
