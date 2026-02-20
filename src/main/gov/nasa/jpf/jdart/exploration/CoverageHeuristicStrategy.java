@@ -175,6 +175,7 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
 
             Instruction insn = instructionBranch.getInstruction();
             if (insn == null) { // This is possible for branches created by uncaught exceptions (e.g., div by zero)
+                System.err.println("insn is null for instruction branch: " + instructionBranch);
                 return false;
             }
 
@@ -182,6 +183,7 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
             MethodBlockMapCoverage cov = blockMapCoverage.getMethodBlockMapCoverage(mi.getFullName());
 
             if (cov == null) {
+                System.err.println("coverage data not found for method: " + mi.getFullName());
                 return false;
             }
 
@@ -194,6 +196,7 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
             }
 
             if (state != BlockCoverageDataDTO.CoverageState.COVERED) {
+                System.err.println("block not covered for instruction: " + insn + " at line " + insn.getLineNumber() + " in method " + mi.getFullName());
                 return false;
             }
 

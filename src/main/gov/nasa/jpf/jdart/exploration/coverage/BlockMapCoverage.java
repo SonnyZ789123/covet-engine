@@ -2,6 +2,7 @@ package gov.nasa.jpf.jdart.exploration.coverage;
 
 import com.kuleuven.blockmap.model.BlockMapDTO;
 import com.kuleuven.blockmap.model.MethodBlockMapDTO;
+import gov.nasa.jpf.util.JvmMethodNameConverter;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -16,7 +17,7 @@ public class BlockMapCoverage {
 
         for (MethodBlockMapDTO methodCoverage : blockMap.methodBlockMaps) {
             // JDart works with dot notation for method full names
-            String jdartFullName = methodCoverage.fullName.replace('/', '.');
+            String jdartFullName = JvmMethodNameConverter.toDottedClassName(methodCoverage.fullName);
 
             methodToBlockMapCoverage.put(jdartFullName, new MethodBlockMapCoverage(methodCoverage));
         }
