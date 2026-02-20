@@ -43,10 +43,16 @@ public class TestSuiteSTWriter {
 
     public void write() {
         try {
+            if (!testSuite.iterator().hasNext()) {
+                logger.info("[TestSuiteGenerator] No tests to write");
+                return;
+            }
+
             for (TestSubSuite testSubSuite : testSuite) {
                 writeTestSuiteFile(testSubSuite,
                         TestSuiteSTWriter.class.getResourceAsStream("/gov/nasa/jpf/jdart/testsuites/TestSuite.st"));
             }
+            logger.info("[TestSuiteGenerator] Test suite generated in " + outBaseDir.getAbsolutePath());
         } catch (IOException e) {
             logger.severe("Failed to write test suite files to " + outBaseDir.getAbsolutePath() + ": ", e.getMessage());
         }
@@ -81,6 +87,7 @@ public class TestSuiteSTWriter {
 
         try (FileWriter fw = new FileWriter(outputFile)) {
             fw.write(content);
+            logger.info("[TestSuiteGenerator] Test suite file written: " + outputFile.getAbsolutePath());
         }
     }
 }
