@@ -81,9 +81,19 @@ public class TestSuiteSTWriter {
         String packagePath = packageName.replace('.', File.separatorChar);
 
         File outputDir = new File(outBaseDir, packagePath);
-        outputDir.mkdirs();
+        if (!outputDir.exists()) {
+            outputDir.mkdirs();
+        }
 
-        File outputFile = new File(outputDir, testSubSuite.getClassName() + ".java");
+        String baseName = testSubSuite.getClassName();
+        File outputFile;
+        int counter = 0;
+
+        do {
+            String suffix = (counter == 0) ? "" : "(" + String.valueOf(counter) + ")";
+            outputFile = new File(outputDir, baseName + suffix + ".java");
+            counter++;
+        } while (outputFile.exists());
 
         try (FileWriter fw = new FileWriter(outputFile)) {
             fw.write(content);
