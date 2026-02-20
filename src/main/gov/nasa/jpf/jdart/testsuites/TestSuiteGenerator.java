@@ -52,7 +52,6 @@ public class TestSuiteGenerator {
   public void generate() throws IOException {
     TestSuiteSTWriter writer = new TestSuiteSTWriter(suite, outDir);
     writer.write();
-    logger.info("[TestSuiteGenerator] Test suite generated at: " + outDir);
   }
   
   public void run() {
@@ -66,10 +65,20 @@ public class TestSuiteGenerator {
 
     Method targetMethod = getTargetMethod(mc, conf.getStringArray("classpath"));
 
-    String suiteName = conf.getString("jdart.tests.suitename",
+    String methodName = mc.getMethodName();
+
+    // Remove "test_" prefix if present (easy-of-use, prefix used in evaluation)
+    if (methodName.startsWith("test_") && methodName.length() > 5) {
+      methodName = methodName.substring(5);
+    }
+
+    String suiteName = conf.getString(
+            "jdart.tests.suitename",
             targetMethod.getDeclaringClass().getSimpleName() +
-                    Character.toUpperCase(mc.getMethodName().charAt(0)) +
-                    mc.getMethodName().substring(1) + "Test");
+                    Character.toUpperCase(methodName.charAt(0)) +
+                    methodName.substring(1) +
+                    "Test"
+    );
 
     if (pkg == null || pkg.isEmpty()) {
       pkg = targetMethod.getDeclaringClass().getPackage().getName();
