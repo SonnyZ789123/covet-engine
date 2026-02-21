@@ -30,7 +30,8 @@ public class MethodSummary implements Iterable<Path> {
     
   private Collection<Path> okPaths;
   private Collection<Path> errorPaths;
-  private Collection<Path> dontKnowPaths;  
+  private Collection<Path> dontKnowPaths;
+  private Collection<Path> ignorePaths;
   private String methodId;
   
   private Valuation partialInitialValuation = null;
@@ -45,6 +46,7 @@ public class MethodSummary implements Iterable<Path> {
     this.okPaths = new ArrayList<>(ct.getCoveredPaths());
     this.errorPaths = new ArrayList<>(ct.getErrorPaths());
     this.dontKnowPaths = new ArrayList<>(ct.getDontKnowPaths());
+    this.ignorePaths = new ArrayList<>(ct.getIgnorePaths());
     this.methodId = methodId;            
   }
   
@@ -58,6 +60,8 @@ public class MethodSummary implements Iterable<Path> {
     for (Path p : errorPaths)
       sb.append(p).append("\n");
     for (Path p : dontKnowPaths)
+      sb.append(p).append("\n");
+    for (Path p : ignorePaths)
       sb.append(p).append("\n");
     
     return sb.toString();
