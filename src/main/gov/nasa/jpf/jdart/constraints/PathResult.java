@@ -18,21 +18,31 @@ package gov.nasa.jpf.jdart.constraints;
 import gov.nasa.jpf.constraints.api.Valuation;
 
 import java.io.IOException;
+import java.util.Set;
 
 public class PathResult {
   
   public static abstract class ValuationResult extends PathResult {
     private final Valuation valuation;
+    /**
+     * The source hashes of the blocks (in context of a CFG) that were executed in the path that led to this result,
+     * can be null if not available.
+     */
+    private final Set<String> blockHashes;
     
-    private ValuationResult(PathState ps, Valuation valuation) {
+    private ValuationResult(PathState ps, Valuation valuation, Set<String> blockHashes) {
       super(ps);
       this.valuation = valuation;
+      this.blockHashes = blockHashes;
     }
     
     public Valuation getValuation() {
       return valuation;
     }
-    
+
+    public Set<String> getBlockHashes() {
+      return blockHashes;
+    }
     
     public void print(Appendable a, boolean printDetails, boolean printValues) throws IOException {
       super.print(a, printValues, printDetails);
@@ -46,8 +56,8 @@ public class PathResult {
   public static final class OkResult extends ValuationResult {
     private final PostCondition postCondition;
     
-    public OkResult(Valuation valuation, PostCondition postCondition) {
-      super(PathState.OK, valuation);
+    public OkResult(Valuation valuation, PostCondition postCondition, Set<String> blockHashes) {
+      super(PathState.OK, valuation, blockHashes);
       this.postCondition = postCondition;
     }
     
@@ -69,8 +79,8 @@ public class PathResult {
     private final String exceptionClass;
     private final String stackTrace;
     
-    public ErrorResult(Valuation valuation, String exceptionClass, String stackTrace) {
-      super(PathState.ERROR, valuation);
+    public ErrorResult(Valuation valuation, String exceptionClass, String stackTrace, Set<String> blockHashes) {
+      super(PathState.ERROR, valuation, blockHashes);
       this.exceptionClass = exceptionClass;
       this.stackTrace = stackTrace;
     }
@@ -92,12 +102,12 @@ public class PathResult {
     }
   }
   
-  public static OkResult ok(Valuation valuation, PostCondition pc) {
-    return new OkResult(valuation, pc);
+  public static OkResult ok(Valuation valuation, PostCondition pc, Set<String> blockHashes) {
+    return new OkResult(valuation, pc, blockHashes);
   }
   
-  public static ErrorResult error(Valuation valuation, String exceptionClass, String stackTrace) {
-    return new ErrorResult(valuation, exceptionClass, stackTrace);
+  public static ErrorResult error(Valuation valuation, String exceptionClass, String stackTrace, Set<String> blockHashes) {
+    return new ErrorResult(valuation, exceptionClass, stackTrace, blockHashes);
   }
   
   public static PathResult dontKnow() {

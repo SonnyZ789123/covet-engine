@@ -95,6 +95,19 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
         return cov.getCoverageStateForLine(instruction.getLineNumber()) == BlockCoverageDataDTO.CoverageState.COVERED ? 1 : 0;
     }
 
+    private String getBlockHash(Instruction instruction) {
+        MethodInfo mi = instruction.getMethodInfo();
+
+        MethodBlockMapCoverage cov = coverageCache.computeIfAbsent(mi,
+                m -> blockMapCoverage.getMethodBlockMapCoverage(mi.getFullName())
+        );
+
+        if (cov == null) {
+            return null;
+        }
+
+        return cov.getBlockHashForLine(instruction.getLineNumber());
+    }
 
     private void addChildren(DecisionData decisionData) {
         for (int i = 0; i < decisionData.getBranchWidth(); i++) {
@@ -160,6 +173,29 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
         }
 
         return ctx.getPresetValues();
+    }
+
+    public Set<String> getBlockHashesAlongPath(Node finalTarget) {
+        Set<String> blockHashes = new HashSet<>();
+
+        Node currentNode = finalTarget;
+        while (currentNode != null) {
+            InstructionBranch instructionBranch = currentNode.getInstructionBranch();
+            if (instructionBranch != null) {
+                Instruction insn = instructionBranch.getInstruction();
+
+                if (insn != null) {
+                    String blockHash = getBlockHash(insn);
+
+                    if (blockHash != null) {
+                        blockHashes.add(blockHash);
+                    }
+                }
+            }
+
+            currentNode = currentNode.getParent();
+        }
+        return blockHashes;
     }
 
     public boolean pathIsBlockCovered(Node finalTarget) {

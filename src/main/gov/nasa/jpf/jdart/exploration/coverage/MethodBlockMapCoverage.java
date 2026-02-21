@@ -37,4 +37,12 @@ public class MethodBlockMapCoverage {
         }
         return blockData.coverageData.coverageState;
     }
+
+    public String getBlockHashForLine(int line) {
+        BlockDataDTO blockData = lineToBlockDataMap.get(line);
+        if (blockData == null) {
+            return null;
+        }
+        return blockData.sourceHash;
+    }
 }

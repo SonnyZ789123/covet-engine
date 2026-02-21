@@ -23,6 +23,8 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -81,6 +83,24 @@ public class TestExecutionPath {
       return this.path.getErrorResult().getExceptionClass();
     }
     return null;
+  }
+
+  /**
+   * Used by the string template.
+   * Only JUnit 5 support.
+   *
+   * @return the block hashes covered by this test, null if the path result is not a valuation result
+   */
+  public String getCoveredBlocksAnnotations() {
+    Set<String> blockHashes = this.path.getBlockHashes();
+    if (blockHashes == null || blockHashes.isEmpty()) {
+      return "";
+    }
+
+    return blockHashes.stream()
+            .sorted()
+            .map(hash -> "@Tag(\"" + hash + "\")")
+            .collect(Collectors.joining("\n"));
   }
 
   private void fillMethodAssertions() {
