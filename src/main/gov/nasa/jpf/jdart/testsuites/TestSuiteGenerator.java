@@ -44,14 +44,25 @@ public class TestSuiteGenerator {
   
   private final String outDir;
 
-  public TestSuiteGenerator(TestSuite suite, String outDir) {
+  private final String testSuiteTemplatePath;
+
+  public TestSuiteGenerator(TestSuite suite, String outDir, int testSuiteJunitVersion) {
     this.suite = suite;
     this.outDir = outDir;
-  }  
+    switch (testSuiteJunitVersion) {
+      case 4:
+        testSuiteTemplatePath = "/gov/nasa/jpf/jdart/testsuites/TestSuiteJUnit4.st";
+        break;
+      case 5:
+        testSuiteTemplatePath = "/gov/nasa/jpf/jdart/testsuites/TestSuiteJUnit5.st";
+        break;
+      default: throw new IllegalArgumentException("Unsupported JUnit version: " + testSuiteJunitVersion);
+    }
+  }
   
   public void generate() throws IOException {
     TestSuiteSTWriter writer = new TestSuiteSTWriter(suite, outDir);
-    writer.write();
+    writer.write(testSuiteTemplatePath);
   }
   
   public void run() {
@@ -61,6 +72,8 @@ public class TestSuiteGenerator {
   public static TestSuiteGenerator fromAnalysis(CompletedAnalysis analysis, Config conf) {
     String dir = conf.getString("jdart.tests.dir");
     String pkg = conf.getString("jdart.tests.pkg");
+    String testSuiteJunitVersion = conf.getString("jdart.tests.junit_version", "4");
+
     ConcolicMethodConfig mc = analysis.getMethodConfig();
 
     Method targetMethod = getTargetMethod(mc, conf.getStringArray("classpath"));
@@ -100,7 +113,7 @@ public class TestSuiteGenerator {
     }
 
     TestSuite suite = new TestSuite(pkg, suiteName, targetMethod, tests);
-    return new TestSuiteGenerator(suite, dir);
+    return new TestSuiteGenerator(suite, dir, Integer.parseInt(testSuiteJunitVersion));
   }
 
   private static Method getTargetMethod(ConcolicMethodConfig mc, String[] classpath) {
