@@ -20,6 +20,7 @@ import gov.nasa.jpf.constraints.api.Valuation;
 import gov.nasa.jpf.constraints.util.ExpressionUtil;
 
 import java.io.IOException;
+import java.util.Set;
 
 /**
  * program path.
@@ -44,6 +45,12 @@ public class Path {
   
   public PathResult getPathResult() {
     return pathResult;
+  }
+
+  public Set<String> getBlockHashes() {
+    if(pathResult instanceof PathResult.ValuationResult)
+      return ((PathResult.ValuationResult)pathResult).getBlockHashes();
+    return null;
   }
   
   public PathResult.ValuationResult getValuationResult() {

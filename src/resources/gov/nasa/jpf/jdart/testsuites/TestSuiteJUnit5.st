@@ -1,6 +1,7 @@
 package <packageName>;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -23,6 +24,7 @@ public class <className> {
 
 <tests:{t |
     @Test
+    <if(t.executionPath.coveredBlocksAnnotations)><t.executionPath.coveredBlocksAnnotations><endif>
     public void test<i0>() {
 <if(!t.executionPath.throwsExceptionTest)>
     <if(methodProps.isStaticMethod)>

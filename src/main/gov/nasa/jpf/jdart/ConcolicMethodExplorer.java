@@ -15,7 +15,6 @@
  */
 package gov.nasa.jpf.jdart;
 
-import com.kuleuven.blockmap.model.BlockCoverageDataDTO;
 import gov.nasa.jpf.JPF;
 import gov.nasa.jpf.constraints.api.Expression;
 import gov.nasa.jpf.constraints.api.SolverContext;
@@ -36,8 +35,6 @@ import gov.nasa.jpf.jdart.constraints.tree.BranchEffect;
 import gov.nasa.jpf.jdart.constraints.tree.InstructionBranch;
 import gov.nasa.jpf.jdart.exploration.CoverageHeuristicStrategy;
 import gov.nasa.jpf.jdart.exploration.ExplorationStrategy;
-import gov.nasa.jpf.jdart.exploration.coverage.BlockMapCoverage;
-import gov.nasa.jpf.jdart.exploration.coverage.MethodBlockMapCoverage;
 import gov.nasa.jpf.jdart.objects.SymbolicObjectsContext;
 import gov.nasa.jpf.util.JPFLogger;
 import gov.nasa.jpf.vm.ClassInfo;
@@ -54,6 +51,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.antlr.runtime.RecognitionException;
 
@@ -190,7 +188,7 @@ public class ConcolicMethodExplorer {
     }
   }
 
-  public boolean checkCoveredPathOnCompletion() {
+  private boolean checkCoveredPathOnCompletion() {
     if (explorationStrategy instanceof CoverageHeuristicStrategy) {
       CoverageHeuristicStrategy coverageHeuristicStrategy = (CoverageHeuristicStrategy) explorationStrategy;
 
@@ -209,14 +207,24 @@ public class ConcolicMethodExplorer {
     }
     return false;
   }
+
+  private Set<String> getBlockHashesForCurrentPath() {
+    if (explorationStrategy instanceof CoverageHeuristicStrategy) {
+      CoverageHeuristicStrategy coverageHeuristicStrategy = (CoverageHeuristicStrategy) explorationStrategy;
+      return coverageHeuristicStrategy.getBlockHashesAlongPath(constraintsTree.getCurrentTarget());
+    }
+    return null;
+  }
       
   public void completePathOk(ThreadInfo ti) {
     if (checkCoveredPathOnCompletion()) {
       return;
     }
 
+    Set<String> blockHashesForCurrentPath = getBlockHashesForCurrentPath();
+
     PostCondition pc = collectPostCondition(ti);
-    PathResult res = PathResult.ok(currValuation, pc);
+    PathResult res = PathResult.ok(currValuation, pc, blockHashesForCurrentPath);
     constraintsTree.finish(res);
   }
   
@@ -225,13 +233,15 @@ public class ConcolicMethodExplorer {
       return;
     }
 
+    Set<String> blockHashesForCurrentPath = getBlockHashesForCurrentPath();
+
     ElementInfo exElem = ti.getPendingException().getException();
     StringWriter sw = new StringWriter();
     try(PrintWriter pw = new PrintWriter(sw)) {
       ti.printStackTrace(pw, exElem.getObjectRef());
     }
     String st = sw.toString();
-    PathResult res = PathResult.error(currValuation, exElem.getClassInfo().getName(), st);
+    PathResult res = PathResult.error(currValuation, exElem.getClassInfo().getName(), st, blockHashesForCurrentPath);
     constraintsTree.finish(res);
   }
 
