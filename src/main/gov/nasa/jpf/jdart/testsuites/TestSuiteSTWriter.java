@@ -41,7 +41,7 @@ public class TestSuiteSTWriter {
         );
     }
 
-    public void write() {
+    public void write(String templatePath) {
         try {
             if (!testSuite.iterator().hasNext()) {
                 logger.info("[TestSuiteGenerator] No tests to write");
@@ -50,7 +50,7 @@ public class TestSuiteSTWriter {
 
             for (TestSubSuite testSubSuite : testSuite) {
                 writeTestSuiteFile(testSubSuite,
-                        TestSuiteSTWriter.class.getResourceAsStream("/gov/nasa/jpf/jdart/testsuites/TestSuite.st"));
+                        TestSuiteSTWriter.class.getResourceAsStream(templatePath));
             }
             logger.info("[TestSuiteGenerator] Test suite generated in " + outBaseDir.getAbsolutePath());
         } catch (IOException e) {
