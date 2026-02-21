@@ -262,6 +262,10 @@ public class ConstraintsTree {
     return getPathsLeadingTo(PathState.DONT_KNOW);
   }
 
+  public Collection<Path> getIgnorePaths() {
+    return getPathsLeadingTo(PathState.IGNORE);
+  }
+
   public Collection<Path> getAllPaths() {
     ArrayList<Path> ret = new ArrayList<>();    
     for (Node n : getDoneLeaves()) {
