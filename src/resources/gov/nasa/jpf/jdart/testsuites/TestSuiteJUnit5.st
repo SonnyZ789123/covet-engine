@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Tag("GeneratedTestSuite")
 public class <className> {
 
 <if(!methodProps.isStaticMethod)>
