@@ -43,6 +43,6 @@ public class MethodBlockMapCoverage {
         if (blockData == null) {
             return null;
         }
-        return blockData.sourceHash;
+        return blockData.blockHash;
     }
 }
