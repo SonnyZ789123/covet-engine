@@ -201,11 +201,20 @@ public class ConcolicMethodExplorer {
       if (!coveredPath) {
           return false;
       } else {
+          // Record edges before marking as IGNORE, so the tracker stays up to date
+          coverageHeuristicStrategy.recordCompletedPath(constraintsTree.getCurrentTarget());
           constraintsTree.finish(PathResult.ignore());
           return true;
       }
     }
     return false;
+  }
+
+  private void recordCompletedPathEdges() {
+    if (explorationStrategy instanceof CoverageHeuristicStrategy) {
+      CoverageHeuristicStrategy coverageHeuristicStrategy = (CoverageHeuristicStrategy) explorationStrategy;
+      coverageHeuristicStrategy.recordCompletedPath(constraintsTree.getCurrentTarget());
+    }
   }
 
   private Set<String> getBlockHashesForCurrentPath() {
@@ -221,6 +230,9 @@ public class ConcolicMethodExplorer {
       return;
     }
 
+    // Record edges for runtime coverage tracking
+    recordCompletedPathEdges();
+
     Set<String> blockHashesForCurrentPath = getBlockHashesForCurrentPath();
 
     PostCondition pc = collectPostCondition(ti);
@@ -232,6 +244,9 @@ public class ConcolicMethodExplorer {
     if (checkCoveredPathOnCompletion()) {
       return;
     }
+
+    // Record edges for runtime coverage tracking
+    recordCompletedPathEdges();
 
     Set<String> blockHashesForCurrentPath = getBlockHashesForCurrentPath();
 
