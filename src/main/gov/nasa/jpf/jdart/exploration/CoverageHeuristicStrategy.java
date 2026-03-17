@@ -28,6 +28,7 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
 
     public final BlockMapCoverage blockMapCoverage;
     public final boolean shouldIgnoreCoveredPaths;
+    private final CfgCoverageTracker cfgCoverageTracker;
 
     private Properties readConfiguration(String configFilePath) {
         Properties props = new Properties();
@@ -67,6 +68,7 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
 
             BlockMapDTO blockMapFromJson = gson.fromJson(reader, BlockMapDTO.class);
             blockMapCoverage = new BlockMapCoverage(blockMapFromJson);
+            cfgCoverageTracker = new CfgCoverageTracker(blockMapFromJson);
 
             reader.close();
         } catch (Exception e) {
@@ -82,17 +84,8 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
     }
 
     private double computeWeight(Instruction instruction) {
-        MethodInfo mi = instruction.getMethodInfo();
-
-        MethodBlockMapCoverage cov = coverageCache.computeIfAbsent(mi,
-                m -> blockMapCoverage.getMethodBlockMapCoverage(mi.getFullName())
-        );
-
-        if (cov == null) {
-            return 0;
-        }
-
-        return cov.getCoverageStateForLine(instruction.getLineNumber()) == BlockCoverageDataDTO.CoverageState.COVERED ? 1 : 0;
+        int blockId = cfgCoverageTracker.getBlockIdForInstruction(instruction);
+        return cfgCoverageTracker.getWeight(blockId);
     }
 
     private String getBlockHash(Instruction instruction) {
@@ -175,6 +168,15 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
         return ctx.getPresetValues();
     }
 
+    /**
+     * Record the CFG edges covered by a completed execution path.
+     * This updates the runtime coverage tracking so that future paths
+     * can be correctly identified as duplicates or not.
+     */
+    public void recordCompletedPath(Node finalTarget) {
+        cfgCoverageTracker.recordCompletedPath(finalTarget);
+    }
+
     public Set<String> getBlockHashesAlongPath(Node finalTarget) {
         Set<String> blockHashes = new HashSet<>();
 
@@ -198,44 +200,13 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
         return blockHashes;
     }
 
+    /**
+     * Check if a path is already covered by examining CFG edge coverage.
+     * A path is considered covered if all CFG edges taken along the execution path
+     * have already been covered (either from initial coverage data or from previous JDart runs).
+     */
     public boolean pathIsBlockCovered(Node finalTarget) {
-        Node currentNode = finalTarget;
-        while (currentNode != null) {
-            InstructionBranch instructionBranch = currentNode.getInstructionBranch();
-            if (instructionBranch == null) {
-                // The root node does not have an associated instruction branch.
-                // Some exception branches (e.g., division by zero) might not have an associated instruction.
-                currentNode = currentNode.getParent();
-                continue;
-            }
-
-            Instruction insn = instructionBranch.getInstruction();
-            if (insn == null) { // This is possible for branches created by uncaught exceptions (e.g., div by zero)
-                return false;
-            }
-
-            MethodInfo mi = insn.getMethodInfo();
-            MethodBlockMapCoverage cov = blockMapCoverage.getMethodBlockMapCoverage(mi.getFullName());
-
-            if (cov == null) {
-                return false;
-            }
-
-            BlockCoverageDataDTO.CoverageState state = cov.getCoverageStateForLine(insn.getLineNumber());
-
-            // The line does not map to any block, is this possible?
-            if (state == null) {
-                currentNode = currentNode.getParent();
-                continue;
-            }
-
-            if (state != BlockCoverageDataDTO.CoverageState.COVERED) {
-                return false;
-            }
-
-            currentNode = currentNode.getParent();
-        }
-
-        return true;
+        List<int[]> edges = cfgCoverageTracker.extractCfgEdges(finalTarget);
+        return cfgCoverageTracker.areAllEdgesCovered(edges);
     }
 }
