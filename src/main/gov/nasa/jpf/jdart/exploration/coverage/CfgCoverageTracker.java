@@ -3,6 +3,7 @@ package gov.nasa.jpf.jdart.exploration.coverage;
 import com.kuleuven.blockmap.model.BlockCoverageDataDTO;
 import com.kuleuven.blockmap.model.BlockDataDTO;
 import com.kuleuven.blockmap.model.BlockMapDTO;
+import com.kuleuven.blockmap.model.EdgeCoverageDTO;
 import com.kuleuven.blockmap.model.MethodBlockMapDTO;
 import gov.nasa.jpf.JPF;
 import gov.nasa.jpf.jdart.constraints.tree.InstructionBranch;
@@ -46,11 +47,20 @@ public class CfgCoverageTracker {
 
                 CfgBlockState state = new CfgBlockState(block.id, successorIds, initiallyCovered);
 
-                // If initially covered, mark all outgoing edges as covered
-                if (initiallyCovered) {
-                    state.coveredEdges.addAll(successorIds);
+                // Use edge-level data when available (v3.1.0+)
+                if (block.edges != null && !block.edges.isEmpty()) {
+                    for (EdgeCoverageDTO edge : block.edges) {
+                        if (edge.hits > 0) {
+                            state.coveredEdges.add(edge.targetBlockId);
+                        }
+                    }
+                } else {
+                    // Fallback: old behavior for backward compatibility with data
+                    // that doesn't include edge information
+                    if (initiallyCovered) {
+                        state.coveredEdges.addAll(successorIds);
+                    }
                 }
-                // PARTIALLY_COVERED and NOT_COVERED: no edges marked (conservative)
 
                 blocks.put(block.id, state);
 
@@ -205,6 +215,30 @@ public class CfgCoverageTracker {
             return 0;
         }
         return block.isFullyCovered() ? 1 : 0;
+    }
+
+    /**
+     * Get the weight for a specific edge (fromBlockId -> toBlockId).
+     * Returns 0 if the edge is NOT covered (high priority).
+     * Returns 1 if the edge IS covered (low priority).
+     * Falls back to block-level weight when the edge doesn't exist in the static CFG
+     * (e.g., JDart's execution tree diverges from the static CFG due to loop unrolling).
+     */
+    public double getEdgeWeight(int fromBlockId, int toBlockId) {
+        if (fromBlockId == -1 || toBlockId == -1) {
+            return toBlockId != -1 ? getWeight(toBlockId) : 0;
+        }
+        CfgBlockState fromBlock = blocks.get(fromBlockId);
+        if (fromBlock == null) {
+            return 0;
+        }
+        if (!fromBlock.successorIds.contains(toBlockId)) {
+            // Edge not in static CFG - execution tree differs from CFG
+            // (e.g., loop unrolling creates decisions not matching CFG edges)
+            // Fall back to block-level weight of the target block
+            return getWeight(toBlockId);
+        }
+        return fromBlock.coveredEdges.contains(toBlockId) ? 1 : 0;
     }
 
     /**

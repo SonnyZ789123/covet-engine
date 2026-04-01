@@ -103,13 +103,27 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
     }
 
     private void addChildren(DecisionData decisionData) {
+        // Determine the "from" block: the block containing the branch instruction
+        Instruction branchInsn = decisionData.getBranchInstruction();
+        int fromBlockId = cfgCoverageTracker.getBlockIdForInstruction(branchInsn);
+
         for (int i = 0; i < decisionData.getBranchWidth(); i++) {
             Instruction nextInstruction = decisionData.getNextInstruction(i);
-            double weight = nextInstruction == null ? 0 : computeWeight(nextInstruction);
+            double weight;
+
+            if (nextInstruction == null) {
+                weight = 0;
+            } else if (fromBlockId != -1) {
+                // Edge-level weight: is this specific branch (from -> to) covered?
+                int toBlockId = cfgCoverageTracker.getBlockIdForInstruction(nextInstruction);
+                weight = cfgCoverageTracker.getEdgeWeight(fromBlockId, toBlockId);
+            } else {
+                // Fallback: block-level weight when we can't determine the from-block
+                weight = computeWeight(nextInstruction);
+            }
 
             Node childNode = decisionData.getOrCreateChild(i);
-            WeightedNode weightedChildNode = new WeightedNode(childNode, weight);
-            nodesFrontierQueue.add(weightedChildNode);
+            nodesFrontierQueue.add(new WeightedNode(childNode, weight));
         }
     }
 
