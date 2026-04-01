@@ -1,6 +1,6 @@
 # The Pathcov pipeline
 
-> First take a look at `/Users/yoran.mertens/dev/master-thesis/claude-context`. This contains the context about the whole project (CONTEXT.md) and how to work (HOW_TO_WORK.md).
+> First take a look at `/Users/yoran.mertens/dev/master-thesis/.claude`. This contains the context about the whole project (CONTEXT.md) and how to work (HOW_TO_WORK.md).
 
 ## The workflow
 
