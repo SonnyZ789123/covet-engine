@@ -27,6 +27,10 @@ public final class DecisionData extends NodeData {
         return branchWidth;
     }
 
+    public Instruction getBranchInstruction() {
+        return branchInsn;
+    }
+
     public int getNumOpen() {
         return numOpen;
     }
