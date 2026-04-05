@@ -97,7 +97,14 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
         return cov.getBlockHashForLine(instruction.getLineNumber());
     }
 
+    private int pathCounter = 0;
+
     private void addChildren(DecisionData decisionData) {
+        Instruction branchInsn = decisionData.getBranchInstruction();
+        String branchInfo = branchInsn != null
+                ? branchInsn.getMethodInfo().getName() + ":" + branchInsn.getLineNumber()
+                : "unknown";
+
         for (int i = 0; i < decisionData.getBranchWidth(); i++) {
             Instruction nextInstruction = decisionData.getNextInstruction(i);
             double weight;
@@ -105,11 +112,10 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
             if (nextInstruction == null) {
                 weight = 0;
             } else {
-                // Weight based on TARGET block's coverage status (like v2.5.2).
-                // Uses runtime-updated visited tracking: blocks visited by JDart
-                // get weight 1, uncovered/unvisited blocks get weight 0.
                 int targetBlockId = cfgCoverageTracker.getBlockIdForInstruction(nextInstruction);
                 weight = cfgCoverageTracker.getWeight(targetBlockId);
+                debugLogger.finest("[addChildren] branch " + branchInfo + " child " + i
+                        + " -> targetBlock=" + targetBlockId + " weight=" + weight);
             }
 
             Node childNode = decisionData.getOrCreateChild(i);
@@ -161,6 +167,9 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
                 Valuation val = ctx.solvePathOrMarkNode(currentNode);
 
                 if (val != null) {
+                    pathCounter++;
+                    debugLogger.finest("[findNext] PATH #" + pathCounter + " targeted at depth="
+                            + currentNode.getDepth() + " weight=" + currentWeightedNode.getWeight());
                     previousTargetedNode = currentNode;
                     return val;
                 }
@@ -215,6 +224,8 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
      */
     public boolean pathIsBlockCovered(Node finalTarget) {
         List<int[]> edges = cfgCoverageTracker.extractCfgEdges(finalTarget);
-        return cfgCoverageTracker.areAllEdgesCovered(edges);
+        boolean result = cfgCoverageTracker.areAllEdgesCovered(edges);
+        debugLogger.finest("[pathIsBlockCovered] edges=" + edges.size() + " -> " + (result ? "IGNORE" : "OK"));
+        return result;
     }
 }
