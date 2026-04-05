@@ -152,18 +152,18 @@ public class CfgCoverageTracker {
     }
 
     /**
-     * Convert a block map edge's source-level branchIndex to JDart's bytecode-level child index.
-     * For IF statements: bytecode inverts conditions, so IF_TRUE (source true) = JDart child 1 (fall-through)
-     * and IF_FALSE (source false) = JDart child 0 (jump taken).
-     * For SWITCH statements: no inversion needed.
+     * Convert a block map edge's branchIndex to JDart's child index.
+     *
+     * Despite the IF_TRUE/IF_FALSE naming, the block map's branchIndex already uses
+     * bytecode convention: branchIndex=0 (IF_TRUE) = bytecode jump taken, branchIndex=1
+     * (IF_FALSE) = bytecode fall-through. This matches JDart's convention where child 0 =
+     * jump taken and child 1 = fall-through. No conversion needed.
+     *
+     * The IF_TRUE label means "the Jimple/bytecode jump CONDITION is true" (not "the source
+     * if-condition is true"). See EdgeCoverage analysis docs and pathcov CHANGELOG.
      */
     private static int toJdartBranchIndex(EdgeCoverageDTO edge) {
-        if (edge.branchType == BranchType.IF_TRUE) {
-            return 1;  // source true = bytecode fall-through = JDart child 1
-        } else if (edge.branchType == BranchType.IF_FALSE) {
-            return 0;  // source false = bytecode jump taken = JDart child 0
-        }
-        return edge.branchIndex;  // SWITCH, NORMAL, etc.: no inversion
+        return edge.branchIndex;
     }
 
     private int findChildIndex(DecisionData parentDec, Node child) {
