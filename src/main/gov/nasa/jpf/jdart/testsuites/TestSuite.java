@@ -69,7 +69,7 @@ public class TestSuite implements Iterable<TestSubSuite> {
     int i = 0;
     for (int offset=0 ; offset < this.testCases.size() ; offset += this.subSuiteSize) {
       TestSubSuite sub = new TestSubSuite(
-              singleSubSuite ? this.suiteName : this.suiteName + i,
+              singleSubSuite ? this.suiteName : indexedSuiteName(i),
               this.testCases.subList(offset, min(offset + this.subSuiteSize, this.testCases.size())
               ));
       subSuites.add(sub);
@@ -77,6 +77,17 @@ public class TestSuite implements Iterable<TestSubSuite> {
     }    
     return subSuites.iterator();
   }
-  
-  
+
+  /**
+   * Insert the sub-suite index before "Test" suffix so the class name
+   * matches JUnit's default discovery pattern (.*Tests?$).
+   * e.g., "FooTest" + 0 -> "Foo0Test" (not "FooTest0")
+   */
+  private String indexedSuiteName(int index) {
+    if (this.suiteName.endsWith("Test")) {
+      return this.suiteName.substring(0, this.suiteName.length() - 4) + index + "Test";
+    }
+    return this.suiteName + index;
+  }
+
 }
