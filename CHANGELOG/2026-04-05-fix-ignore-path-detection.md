@@ -1,51 +1,53 @@
-# Fix: IGNORE Path Detection for Interprocedural Execution (2026-04-05)
+# Fix: Coverage Heuristic IGNORE Detection and Exploration Guiding (2026-04-05)
 
 ## Problem
 
-JDart v3.1.0 marked nearly all execution paths as IGNORE on complex, multi-method SUTs. On FinScore8 (30s, 58.96% initial coverage): **3383 IGNORE / 3 OK** out of 3426 total paths. The coverage heuristic was effectively broken for any interprocedural SUT.
+JDart v3.1.0 on FinScore8 (30s, 71% initial coverage): 3 OK / 3383 IGNORE. Coverage heuristic effectively broken for interprocedural SUTs. Three distinct bugs identified.
 
-## Root Cause
+## Bug 1: Edge extraction used consecutive block pairs (cross-method failure)
 
-The v3.1.0 `pathIsBlockCovered` used `CfgCoverageTracker.extractCfgEdges()` + `areAllEdgesCovered()` to decide IGNORE. This approach had two compounding flaws:
+`extractCfgEdges` built a sequence of block IDs from the constraints tree and checked consecutive pairs against `successorBlockIds`. The block map has 0 cross-method successor edges (718 within-method only), so cross-method transitions produced no valid edges. The extracted edge list was near-empty for interprocedural paths.
 
-**1. The block map has 0 cross-method successor edges.**
+**Fix:** Rewrote `extractCfgEdges` to use per-decision extraction: for each decision node, get the parent's `branchInsn` (from-block) and find the child index via `findChildIndex`. Returns `(fromBlockId, branchIndex)` pairs instead of `(fromBlockId, toBlockId)`. This avoids the `toBlockId` line-number ambiguity that caused 42% of decisions to produce invalid edges ("notSuccessor").
 
-The ICFG block map (from pathcov) includes blocks from multiple methods, but `successorBlockIds` only references blocks within the same method. Confirmed: 718 within-method edges, 0 cross-method edges.
+## Bug 2: Branch index inversion (JDart vs block map)
 
-`extractCfgEdges` walks the constraints tree and checks consecutive block pairs against `successorIds`. For cross-method transitions (which dominate interprocedural paths), consecutive blocks are in different methods, so `fromBlock.successorIds.contains(toBlockId)` fails. The extracted edge list is nearly empty.
+The block map's `EdgeCoverageDTO.branchIndex` uses **source-level** convention:
+- branchIndex 0 = IF_TRUE (source condition true = bytecode fall-through)
+- branchIndex 1 = IF_FALSE (source condition false = bytecode jump taken)
 
-**2. Runtime tracking caused cascading false IGNORE.**
+JDart's child index uses **bytecode-level** convention:
+- child 0 = bytecode jump taken = source false
+- child 1 = bytecode fall-through = source true
 
-After each execution, `recordCompletedPath` recorded edges as covered. After ~3 OK paths, the few within-method edges that `extractCfgEdges` could find were all recorded as covered. `areAllEdgesCovered` on a near-empty list returned `true` for all subsequent paths.
+Without conversion, the heuristic checked the WRONG branch's coverage at every if-statement, guiding exploration backwards.
 
-## Fix
+**Fix:** Added `toJdartBranchIndex(EdgeCoverageDTO)` that maps IF_TRUE -> 1 and IF_FALSE -> 0 when loading initial coverage data. SWITCH branches are unchanged.
 
-Reverted `pathIsBlockCovered` to the proven v2.5.2 approach:
-- Walk each instruction along the constraints tree path
-- Check its block coverage state against the **initial** (static) block map
-- Conservative: any unmapped method or uncovered block -> NOT IGNORE
+## Bug 3: Runtime tracking was too aggressive for priority queue
 
-Kept `CfgCoverageTracker` for exploration guiding (edge-level weights in the priority queue). The tracker correctly falls back to block-level weights for cross-method edges.
+Two sub-issues:
+- `block.visited = true` after first JDart visit prevented re-exploration of partially-covered blocks through different constraint paths
+- Runtime-updated weights caused the priority queue to deprioritize blocks that JDart had visited once but still had uncovered branches
 
-## Results (FinScore8, 30s, same SUT)
+**Fix:** Priority queue weight uses `block.initiallyCovered` (static, matching v2.5.2). Blocks not fully covered by the initial test suite keep weight 0 permanently. Runtime branch tracking is kept for IGNORE detection only.
 
-| Metric | Before (bug) | After (fix) | v2.5.2 baseline |
-|--------|-------------|-------------|-----------------|
-| Initial coverage | 58.96% | 58.96% | 71.77% |
-| Final coverage | ~59% | **63.64%** | 77.91% |
-| OK paths | 3 | **4256** | 1690 |
-| IGNORE paths | 3383 | **1** | 1 |
-| Total paths | 3426 | **4350** | 1702 |
+## Additional fix: pathcov line-number collision (not yet fixed)
 
-## Additional Fix: Test Suite Naming
+`CoverageReport.buildLineToCoverageMap()` in pathcov uses a flat `Map<Integer, LineDTO>` keyed by line number across ALL methods. 51.6% of lines have collisions, causing 143 edges (19.9%) to get `hits=-1` (unresolvable). Fix: scope the map per method. This is a pathcov bug, tracked separately.
 
-Generated test class names (e.g., `FooTest0`) didn't match JUnit Platform's default discovery pattern `.*Tests?$`. This caused generated tests to be invisible to `--scan-classpath`. Fixed by inserting the index before "Test" suffix: `Foo0Test`.
+## Results on FinScore8 (30s)
 
-## Files Changed
+| Version | Initial | Final | Improvement | OK paths | IGNORE |
+|---------|---------|-------|-------------|----------|--------|
+| v2.5.2 | 71.77% | 77.91% | +6.14% | 1690 | 1 |
+| v3.1.0 (broken) | 71.06% | ~71% | ~0% | 3 | 3383 |
+| **v3.1.0 (fixed)** | 71.06% | **77.21%** | **+6.15%** | 2885 | 1 |
 
-- `src/main/gov/nasa/jpf/jdart/exploration/CoverageHeuristicStrategy.java` - reverted `pathIsBlockCovered`
-- `src/main/gov/nasa/jpf/jdart/testsuites/TestSuite.java` - fixed sub-suite naming
+First 1000 tests achieve 77.21% (same as all tests) - heuristic frontloads coverage-improving paths.
 
-## Architecture Note
+## Files changed
 
-For the IGNORE check to use runtime edge tracking correctly, the block map would need cross-method successor edges (call/return edges in the ICFG). This is a pathcov change. Until then, the static block-level IGNORE check is conservative and correct.
+- `CfgCoverageTracker.java`: rewrote `extractCfgEdges`, added `toJdartBranchIndex`, separated `initiallyCoveredBranches`/`runtimeCoveredBranches`, static `getWeight`
+- `CoverageHeuristicStrategy.java`: `addChildren` uses target-block weight (like v2.5.2), `pathIsBlockCovered` uses branch-index IGNORE detection
+- `TestSuite.java`: fixed sub-suite naming to match JUnit discovery pattern
