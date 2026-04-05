@@ -252,12 +252,14 @@ public class CfgCoverageTracker {
 
     /**
      * Get the weight for a target block. Used by the priority queue.
-     * Returns 0 if the block is not fully covered by the INITIAL test suite (high priority).
+     * Returns 0 if the block is not fully covered by the initial test suite (high priority).
      * Returns 1 if the block is initially fully covered (low priority).
      *
-     * Uses only STATIC initial coverage. Partially-covered and uncovered blocks
-     * keep weight 0 even after JDart visits them, because different constraint paths
-     * may reach different branches within the block.
+     * Uses static initial coverage. When a DECISION node is re-polled from the
+     * queue, addChildren re-adds children with fresh weights. Runtime-updated
+     * weights would deprioritize children whose targets became covered during
+     * exploration, reducing path diversity. Static weights ensure consistent
+     * exploration priority through partially-covered blocks.
      */
     public double getWeight(int blockId) {
         CfgBlockState block = blocks.get(blockId);
