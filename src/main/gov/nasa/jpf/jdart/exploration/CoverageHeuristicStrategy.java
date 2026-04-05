@@ -98,13 +98,19 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
     }
 
     private void addChildren(DecisionData decisionData) {
-        // Determine the "from" block: the block containing the branch instruction
-        Instruction branchInsn = decisionData.getBranchInstruction();
-        int fromBlockId = cfgCoverageTracker.getBlockIdForInstruction(branchInsn);
-
         for (int i = 0; i < decisionData.getBranchWidth(); i++) {
-            // Use branch index directly: is branch i of this block covered?
-            double weight = cfgCoverageTracker.getBranchWeight(fromBlockId, i);
+            Instruction nextInstruction = decisionData.getNextInstruction(i);
+            double weight;
+
+            if (nextInstruction == null) {
+                weight = 0;
+            } else {
+                // Weight based on TARGET block's coverage status (like v2.5.2).
+                // Uses runtime-updated visited tracking: blocks visited by JDart
+                // get weight 1, uncovered/unvisited blocks get weight 0.
+                int targetBlockId = cfgCoverageTracker.getBlockIdForInstruction(nextInstruction);
+                weight = cfgCoverageTracker.getWeight(targetBlockId);
+            }
 
             Node childNode = decisionData.getOrCreateChild(i);
             nodesFrontierQueue.add(new WeightedNode(childNode, weight));

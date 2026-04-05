@@ -3,6 +3,7 @@ package gov.nasa.jpf.jdart.exploration.coverage;
 import com.kuleuven.blockmap.model.BlockCoverageDataDTO;
 import com.kuleuven.blockmap.model.BlockDataDTO;
 import com.kuleuven.blockmap.model.BlockMapDTO;
+import com.kuleuven.blockmap.model.BranchType;
 import com.kuleuven.blockmap.model.EdgeCoverageDTO;
 import com.kuleuven.blockmap.model.MethodBlockMapDTO;
 import gov.nasa.jpf.JPF;
@@ -55,8 +56,13 @@ public class CfgCoverageTracker {
                     for (EdgeCoverageDTO edge : block.edges) {
                         if (edge.hits > 0) {
                             state.coveredEdges.add(edge.targetBlockId);
-                            state.initiallyCoveredBranches.add(edge.branchIndex);
-                            state.runtimeCoveredBranches.add(edge.branchIndex);
+                            // Convert block map's source-level branchIndex to JDart's bytecode-level index.
+                            // Block map: branchIndex 0 = IF_TRUE (source true), 1 = IF_FALSE (source false)
+                            // JDart:     child 0 = bytecode jump taken (= source false), 1 = fall-through (= source true)
+                            // So for IF branches: invert the index. For SWITCH: no inversion needed.
+                            int jdartIndex = toJdartBranchIndex(edge);
+                            state.initiallyCoveredBranches.add(jdartIndex);
+                            state.runtimeCoveredBranches.add(jdartIndex);
                         }
                     }
                 } else {
@@ -145,6 +151,21 @@ public class CfgCoverageTracker {
         return branchDecisions;
     }
 
+    /**
+     * Convert a block map edge's source-level branchIndex to JDart's bytecode-level child index.
+     * For IF statements: bytecode inverts conditions, so IF_TRUE (source true) = JDart child 1 (fall-through)
+     * and IF_FALSE (source false) = JDart child 0 (jump taken).
+     * For SWITCH statements: no inversion needed.
+     */
+    private static int toJdartBranchIndex(EdgeCoverageDTO edge) {
+        if (edge.branchType == BranchType.IF_TRUE) {
+            return 1;  // source true = bytecode fall-through = JDart child 1
+        } else if (edge.branchType == BranchType.IF_FALSE) {
+            return 0;  // source false = bytecode jump taken = JDart child 0
+        }
+        return edge.branchIndex;  // SWITCH, NORMAL, etc.: no inversion
+    }
+
     private int findChildIndex(DecisionData parentDec, Node child) {
         Node[] children = parentDec.getChildren();
         for (int i = 0; i < children.length; i++) {
@@ -230,17 +251,20 @@ public class CfgCoverageTracker {
     }
 
     /**
-     * Get the weight for a block. Used by the priority queue.
-     * Returns 0 if the block has any uncovered outgoing edges (high priority).
-     * Returns 1 if all outgoing edges are covered (low priority).
+     * Get the weight for a target block. Used by the priority queue.
+     * Returns 0 if the block is not fully covered by the INITIAL test suite (high priority).
+     * Returns 1 if the block is initially fully covered (low priority).
+     *
+     * Uses only STATIC initial coverage. Partially-covered and uncovered blocks
+     * keep weight 0 even after JDart visits them, because different constraint paths
+     * may reach different branches within the block.
      */
     public double getWeight(int blockId) {
         CfgBlockState block = blocks.get(blockId);
         if (block == null) {
-            // Unknown block - treat as uncovered (high priority)
             return 0;
         }
-        return block.isFullyCovered() ? 1 : 0;
+        return block.initiallyCovered ? 1 : 0;
     }
 
     /**
