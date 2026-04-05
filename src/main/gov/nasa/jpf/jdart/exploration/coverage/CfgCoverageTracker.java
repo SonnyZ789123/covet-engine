@@ -13,6 +13,8 @@ import gov.nasa.jpf.util.JvmMethodNameConverter;
 import gov.nasa.jpf.vm.Instruction;
 import gov.nasa.jpf.vm.MethodInfo;
 
+import gov.nasa.jpf.jdart.constraints.tree.DecisionData;
+
 import java.util.*;
 
 /**
@@ -45,13 +47,16 @@ public class CfgCoverageTracker {
                 boolean initiallyCovered =
                         block.coverageData.coverageState == BlockCoverageDataDTO.CoverageState.COVERED;
 
-                CfgBlockState state = new CfgBlockState(block.id, successorIds, initiallyCovered);
+                int totalBranches = (block.edges != null) ? block.edges.size() : 0;
+                CfgBlockState state = new CfgBlockState(block.id, successorIds, initiallyCovered, totalBranches);
 
                 // Use edge-level data when available (v3.1.0+)
                 if (block.edges != null && !block.edges.isEmpty()) {
                     for (EdgeCoverageDTO edge : block.edges) {
                         if (edge.hits > 0) {
                             state.coveredEdges.add(edge.targetBlockId);
+                            state.initiallyCoveredBranches.add(edge.branchIndex);
+                            state.runtimeCoveredBranches.add(edge.branchIndex);
                         }
                     }
                 } else {
@@ -93,61 +98,78 @@ public class CfgCoverageTracker {
     }
 
     /**
-     * Extract the list of CFG edges (fromBlockId, toBlockId) taken along an execution path.
-     * Walks from the leaf node up to the root, then reverses to get root-to-leaf order,
-     * and extracts consecutive block pairs that are connected by CFG edges.
+     * Extract the list of CFG branch edges taken along an execution path.
+     *
+     * For each decision node along the path, uses the parent's branch instruction
+     * (from-block) and the child's target instruction (to-block) to identify the
+     * exact CFG edge taken. This correctly handles interprocedural paths: cross-method
+     * transitions are skipped (the block map has no cross-method successor edges),
+     * while within-method branch edges are captured precisely.
+     */
+    /**
+     * Extract the branch decisions taken along an execution path.
+     * Returns a list of (fromBlockId, branchIndex) pairs representing the
+     * specific branches taken at each decision point.
+     *
+     * Uses the parent decision's branchInsn for the from-block and determines
+     * the branch index by finding which child of the parent matches the current node.
+     * This avoids the toBlockId line-number ambiguity that caused incorrect edge matching.
      */
     public List<int[]> extractCfgEdges(Node leafNode) {
-        // Collect block IDs from leaf to root
-        List<Integer> blockIdsReversed = new ArrayList<>();
+        List<int[]> branchDecisions = new ArrayList<>();
         Node current = leafNode;
-        int prevBlockId = -1;
 
         while (current != null) {
-            InstructionBranch ib = current.getInstructionBranch();
-            if (ib != null && ib.getInstruction() != null) {
-                int blockId = getBlockIdForInstruction(ib.getInstruction());
-                if (blockId != -1 && blockId != prevBlockId) {
-                    blockIdsReversed.add(blockId);
-                    prevBlockId = blockId;
+            Node parent = current.getParent();
+            if (parent == null) {
+                break;
+            }
+
+            DecisionData parentDec = parent.decisionData();
+            if (parentDec != null) {
+                Instruction branchInsn = parentDec.getBranchInstruction();
+                if (branchInsn != null) {
+                    int fromBlockId = getBlockIdForInstruction(branchInsn);
+                    if (fromBlockId != -1) {
+                        int branchIndex = findChildIndex(parentDec, current);
+                        if (branchIndex != -1) {
+                            branchDecisions.add(new int[]{fromBlockId, branchIndex});
+                        }
+                    }
                 }
             }
-            current = current.getParent();
+
+            current = parent;
         }
 
-        // Reverse to get root-to-leaf order
-        List<Integer> blockIds = new ArrayList<>(blockIdsReversed);
-        Collections.reverse(blockIds);
+        return branchDecisions;
+    }
 
-        // Extract edges between consecutive blocks that are connected in the CFG
-        List<int[]> edges = new ArrayList<>();
-        for (int i = 0; i < blockIds.size() - 1; i++) {
-            int fromId = blockIds.get(i);
-            int toId = blockIds.get(i + 1);
-
-            CfgBlockState fromBlock = blocks.get(fromId);
-            if (fromBlock != null && fromBlock.successorIds.contains(toId)) {
-                edges.add(new int[]{fromId, toId});
+    private int findChildIndex(DecisionData parentDec, Node child) {
+        Node[] children = parentDec.getChildren();
+        for (int i = 0; i < children.length; i++) {
+            if (children[i] == child) {
+                return i;
             }
         }
-
-        return edges;
+        return -1;
     }
 
     /**
-     * Record the edges taken by a completed execution path.
-     * Updates the runtime coverage tracking.
+     * Record the branch decisions taken by a completed execution path.
+     * Each entry is (fromBlockId, branchIndex). Updates the runtime coverage tracking.
      */
-    public void recordPathEdges(List<int[]> edges) {
-        for (int[] edge : edges) {
-            int fromId = edge[0];
-            int toId = edge[1];
+    /**
+     * Record branch decisions for exploration guiding (runtime tracking).
+     * Updates runtimeCoveredBranches but NOT initiallyCoveredBranches.
+     */
+    public void recordPathEdges(List<int[]> branchDecisions) {
+        for (int[] decision : branchDecisions) {
+            int fromId = decision[0];
+            int branchIndex = decision[1];
             CfgBlockState block = blocks.get(fromId);
             if (block != null) {
-                boolean isNew = block.coveredEdges.add(toId);
-                if (isNew) {
-                    logger.finest("[CfgTracker] New edge covered: " + fromId + " -> " + toId);
-                }
+                block.runtimeCoveredBranches.add(branchIndex);
             }
         }
     }
@@ -186,17 +208,21 @@ public class CfgCoverageTracker {
      * Check if all edges in the given path have already been covered.
      * Used for duplicate detection: if all edges are covered, the path is redundant.
      */
-    public boolean areAllEdgesCovered(List<int[]> edges) {
-        if (edges.isEmpty()) {
-            // No edges found - can't determine coverage, treat as not covered
+    /**
+     * Check if all branch decisions in the path were INITIALLY covered
+     * (by the existing test suite, not by JDart runtime discoveries).
+     * This prevents JDart from marking its own discoveries as redundant.
+     */
+    public boolean areAllEdgesCovered(List<int[]> branchDecisions) {
+        if (branchDecisions.isEmpty()) {
             return false;
         }
 
-        for (int[] edge : edges) {
-            int fromId = edge[0];
-            int toId = edge[1];
+        for (int[] decision : branchDecisions) {
+            int fromId = decision[0];
+            int branchIndex = decision[1];
             CfgBlockState block = blocks.get(fromId);
-            if (block == null || !block.coveredEdges.contains(toId)) {
+            if (block == null || !block.initiallyCoveredBranches.contains(branchIndex)) {
                 return false;
             }
         }
@@ -218,27 +244,20 @@ public class CfgCoverageTracker {
     }
 
     /**
-     * Get the weight for a specific edge (fromBlockId -> toBlockId).
-     * Returns 0 if the edge is NOT covered (high priority).
-     * Returns 1 if the edge IS covered (low priority).
-     * Falls back to block-level weight when the edge doesn't exist in the static CFG
-     * (e.g., JDart's execution tree diverges from the static CFG due to loop unrolling).
+     * Get the weight for a specific branch of a block (for exploration guiding).
+     * Uses RUNTIME coverage (initial + JDart discoveries).
+     * Returns 0 if the branch is NOT covered (high priority).
+     * Returns 1 if the branch IS covered (low priority).
      */
-    public double getEdgeWeight(int fromBlockId, int toBlockId) {
-        if (fromBlockId == -1 || toBlockId == -1) {
-            return toBlockId != -1 ? getWeight(toBlockId) : 0;
+    public double getBranchWeight(int fromBlockId, int branchIndex) {
+        if (fromBlockId == -1) {
+            return 0;
         }
         CfgBlockState fromBlock = blocks.get(fromBlockId);
         if (fromBlock == null) {
             return 0;
         }
-        if (!fromBlock.successorIds.contains(toBlockId)) {
-            // Edge not in static CFG - execution tree differs from CFG
-            // (e.g., loop unrolling creates decisions not matching CFG edges)
-            // Fall back to block-level weight of the target block
-            return getWeight(toBlockId);
-        }
-        return fromBlock.coveredEdges.contains(toBlockId) ? 1 : 0;
+        return fromBlock.runtimeCoveredBranches.contains(branchIndex) ? 1 : 0;
     }
 
     /**
@@ -248,24 +267,36 @@ public class CfgCoverageTracker {
         final int id;
         final Set<Integer> successorIds;
         final Set<Integer> coveredEdges;
+        /** Branch indices initially covered by the existing test suite. Used for IGNORE detection. */
+        final Set<Integer> initiallyCoveredBranches;
+        /** Branch indices covered at runtime (initial + JDart discoveries). Used for exploration guiding. */
+        final Set<Integer> runtimeCoveredBranches;
+        /** Total number of outgoing branches (from edge data). */
+        final int totalBranches;
         final boolean initiallyCovered;
         boolean visited;
 
-        CfgBlockState(int id, Set<Integer> successorIds, boolean initiallyCovered) {
+        CfgBlockState(int id, Set<Integer> successorIds, boolean initiallyCovered, int totalBranches) {
             this.id = id;
             this.successorIds = successorIds;
             this.coveredEdges = new HashSet<>();
+            this.initiallyCoveredBranches = new HashSet<>();
+            this.runtimeCoveredBranches = new HashSet<>();
+            this.totalBranches = totalBranches;
             this.initiallyCovered = initiallyCovered;
             this.visited = initiallyCovered;
         }
 
         /**
-         * A block is fully covered if all its outgoing edges are covered.
-         * A leaf block (no successors) is fully covered if it has been visited.
+         * A block is fully covered (for exploration guiding) if all its outgoing branches
+         * have been covered (either initially or by JDart runtime discoveries).
          */
         boolean isFullyCovered() {
-            if (successorIds.isEmpty()) {
+            if (totalBranches == 0 && successorIds.isEmpty()) {
                 return visited;
+            }
+            if (totalBranches > 0) {
+                return runtimeCoveredBranches.size() >= totalBranches;
             }
             return coveredEdges.containsAll(successorIds);
         }

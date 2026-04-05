@@ -83,11 +83,6 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
         previousTargetedNode = null;
     }
 
-    private double computeWeight(Instruction instruction) {
-        int blockId = cfgCoverageTracker.getBlockIdForInstruction(instruction);
-        return cfgCoverageTracker.getWeight(blockId);
-    }
-
     private String getBlockHash(Instruction instruction) {
         MethodInfo mi = instruction.getMethodInfo();
 
@@ -108,19 +103,8 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
         int fromBlockId = cfgCoverageTracker.getBlockIdForInstruction(branchInsn);
 
         for (int i = 0; i < decisionData.getBranchWidth(); i++) {
-            Instruction nextInstruction = decisionData.getNextInstruction(i);
-            double weight;
-
-            if (nextInstruction == null) {
-                weight = 0;
-            } else if (fromBlockId != -1) {
-                // Edge-level weight: is this specific branch (from -> to) covered?
-                int toBlockId = cfgCoverageTracker.getBlockIdForInstruction(nextInstruction);
-                weight = cfgCoverageTracker.getEdgeWeight(fromBlockId, toBlockId);
-            } else {
-                // Fallback: block-level weight when we can't determine the from-block
-                weight = computeWeight(nextInstruction);
-            }
+            // Use branch index directly: is branch i of this block covered?
+            double weight = cfgCoverageTracker.getBranchWeight(fromBlockId, i);
 
             Node childNode = decisionData.getOrCreateChild(i);
             nodesFrontierQueue.add(new WeightedNode(childNode, weight));
@@ -215,54 +199,16 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
     }
 
     /**
-     * Check if a path is already covered by examining the initial block map coverage.
-     * A path is considered covered if every instruction along the path belongs to a
-     * COVERED block in the initial coverage data (from the existing test suite).
+     * Check if a path is already covered using runtime edge-level tracking.
+     * A path is IGNORE if every within-method branch edge along the path has
+     * already been covered (either from initial coverage data or previous JDart runs).
      *
-     * This uses only STATIC coverage from the initial test suite, not runtime tracking.
-     * The block map has only method-local successor edges (no cross-method edges),
-     * so edge-based checking via extractCfgEdges produces false positives for
-     * interprocedural paths. Block-level checking is conservative and correct:
-     * if any instruction is in an uncovered/partially-covered block or in an
-     * unmapped method, the path is NOT considered covered.
+     * Uses per-decision edge extraction: for each decision along the path, checks
+     * the edge from the branch instruction's block to the taken branch's target block.
+     * Cross-method transitions are skipped (the block map has method-local edges only).
      */
     public boolean pathIsBlockCovered(Node finalTarget) {
-        Node currentNode = finalTarget;
-        while (currentNode != null) {
-            InstructionBranch instructionBranch = currentNode.getInstructionBranch();
-            if (instructionBranch == null) {
-                currentNode = currentNode.getParent();
-                continue;
-            }
-
-            Instruction insn = instructionBranch.getInstruction();
-            if (insn == null) {
-                return false;
-            }
-
-            MethodInfo mi = insn.getMethodInfo();
-            MethodBlockMapCoverage cov = coverageCache.computeIfAbsent(mi,
-                    m -> blockMapCoverage.getMethodBlockMapCoverage(mi.getFullName())
-            );
-
-            if (cov == null) {
-                return false;
-            }
-
-            BlockCoverageDataDTO.CoverageState state = cov.getCoverageStateForLine(insn.getLineNumber());
-
-            if (state == null) {
-                currentNode = currentNode.getParent();
-                continue;
-            }
-
-            if (state != BlockCoverageDataDTO.CoverageState.COVERED) {
-                return false;
-            }
-
-            currentNode = currentNode.getParent();
-        }
-
-        return true;
+        List<int[]> edges = cfgCoverageTracker.extractCfgEdges(finalTarget);
+        return cfgCoverageTracker.areAllEdgesCovered(edges);
     }
 }
