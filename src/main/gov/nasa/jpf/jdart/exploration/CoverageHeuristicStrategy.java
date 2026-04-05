@@ -215,12 +215,54 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
     }
 
     /**
-     * Check if a path is already covered by examining CFG edge coverage.
-     * A path is considered covered if all CFG edges taken along the execution path
-     * have already been covered (either from initial coverage data or from previous JDart runs).
+     * Check if a path is already covered by examining the initial block map coverage.
+     * A path is considered covered if every instruction along the path belongs to a
+     * COVERED block in the initial coverage data (from the existing test suite).
+     *
+     * This uses only STATIC coverage from the initial test suite, not runtime tracking.
+     * The block map has only method-local successor edges (no cross-method edges),
+     * so edge-based checking via extractCfgEdges produces false positives for
+     * interprocedural paths. Block-level checking is conservative and correct:
+     * if any instruction is in an uncovered/partially-covered block or in an
+     * unmapped method, the path is NOT considered covered.
      */
     public boolean pathIsBlockCovered(Node finalTarget) {
-        List<int[]> edges = cfgCoverageTracker.extractCfgEdges(finalTarget);
-        return cfgCoverageTracker.areAllEdgesCovered(edges);
+        Node currentNode = finalTarget;
+        while (currentNode != null) {
+            InstructionBranch instructionBranch = currentNode.getInstructionBranch();
+            if (instructionBranch == null) {
+                currentNode = currentNode.getParent();
+                continue;
+            }
+
+            Instruction insn = instructionBranch.getInstruction();
+            if (insn == null) {
+                return false;
+            }
+
+            MethodInfo mi = insn.getMethodInfo();
+            MethodBlockMapCoverage cov = coverageCache.computeIfAbsent(mi,
+                    m -> blockMapCoverage.getMethodBlockMapCoverage(mi.getFullName())
+            );
+
+            if (cov == null) {
+                return false;
+            }
+
+            BlockCoverageDataDTO.CoverageState state = cov.getCoverageStateForLine(insn.getLineNumber());
+
+            if (state == null) {
+                currentNode = currentNode.getParent();
+                continue;
+            }
+
+            if (state != BlockCoverageDataDTO.CoverageState.COVERED) {
+                return false;
+            }
+
+            currentNode = currentNode.getParent();
+        }
+
+        return true;
     }
 }
