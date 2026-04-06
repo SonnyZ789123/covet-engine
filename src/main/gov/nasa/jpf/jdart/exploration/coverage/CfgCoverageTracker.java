@@ -226,13 +226,9 @@ public class CfgCoverageTracker {
     }
 
     /**
-     * Check if all edges in the given path have already been covered.
-     * Used for duplicate detection: if all edges are covered, the path is redundant.
-     */
-    /**
-     * Check if all branch decisions in the path were INITIALLY covered
-     * (by the existing test suite, not by JDart runtime discoveries).
-     * This prevents JDart from marking its own discoveries as redundant.
+     * Check if all branch decisions in the path are covered at RUNTIME
+     * (initial test suite + JDart discoveries). A path is redundant when
+     * every branch it takes has already been explored.
      */
     public boolean areAllEdgesCovered(List<int[]> branchDecisions) {
         if (branchDecisions.isEmpty()) {
@@ -243,7 +239,7 @@ public class CfgCoverageTracker {
             int fromId = decision[0];
             int branchIndex = decision[1];
             CfgBlockState block = blocks.get(fromId);
-            if (block == null || !block.initiallyCoveredBranches.contains(branchIndex)) {
+            if (block == null || !block.runtimeCoveredBranches.contains(branchIndex)) {
                 return false;
             }
         }
@@ -252,21 +248,20 @@ public class CfgCoverageTracker {
 
     /**
      * Get the weight for a target block. Used by the priority queue.
-     * Returns 0 if the block is not fully covered by the initial test suite (high priority).
-     * Returns 1 if initially fully covered (low priority).
+     * Returns 0 if the block has any uncovered branch at runtime (high priority).
+     * Returns 1 if all branches are covered at runtime (low priority).
      *
-     * Deliberately uses STATIC initial coverage, not runtime tracking. A "fully covered"
-     * block (all branches explored) can still be on paths to different uncovered code
-     * depending on concrete input values. Static weight preserves path diversity through
-     * partially-covered blocks, achieving higher overall branch coverage than runtime.
-     * Empirically: static 77.21% vs runtime 75.86% on FinScore8.
+     * Uses RUNTIME tracking (initial + JDart discoveries). Once all branches
+     * of a block are explored, the block gets weight 1. This guides the explorer
+     * toward blocks that still have uncovered branches and allows IGNORE detection
+     * for paths that traverse only fully-covered blocks.
      */
     public double getWeight(int blockId) {
         CfgBlockState block = blocks.get(blockId);
         if (block == null) {
             return 0;
         }
-        return block.initiallyCovered ? 1 : 0;
+        return block.isFullyCovered() ? 1 : 0;
     }
 
     /**
