@@ -30,14 +30,39 @@ public class CfgCoverageTracker {
 
     private final Map<Integer, CfgBlockState> blocks = new HashMap<>();
 
-    // Per-method lookup: method full name (dotted) -> (line number -> block ID)
-    private final Map<String, Map<Integer, Integer>> methodLineToBlockId = new HashMap<>();
+    /**
+     * Per-method lookup: method full name (dotted) -> (line number -> sorted list of branch block IDs).
+     * Only blocks with conditional edges (IF_TRUE/IF_FALSE/SWITCH) are included.
+     * For lines with a single branch block, the list has one element.
+     * For compound conditions (e.g. "if (a || b)"), the list has multiple elements
+     * sorted by block ID (topological/bytecode order).
+     */
+    private final Map<String, Map<Integer, List<Integer>>> methodLineToBranchBlockIds = new HashMap<>();
+
+    /**
+     * Cache: maps each encountered Instruction to its resolved block ID.
+     * Uses identity equality (same Instruction object = same bytecode instruction).
+     */
+    private final IdentityHashMap<Instruction, Integer> instructionBlockIdCache = new IdentityHashMap<>();
+
+    /**
+     * For lines with multiple branch blocks (compound conditions), tracks
+     * bytecode positions of instructions encountered at that line.
+     * Used to assign positions to blocks in order: lowest position -> lowest block ID.
+     *
+     * Structure: method -> line -> TreeMap(position -> instruction)
+     */
+    private final Map<String, Map<Integer, TreeMap<Integer, Instruction>>> linePositionTrackers = new HashMap<>();
+
+    /** Set of block IDs that have conditional branch edges (IF or SWITCH). */
+    private final Set<Integer> conditionalBranchBlockIds = new HashSet<>();
 
     public CfgCoverageTracker(BlockMapDTO blockMap) {
-        // First pass: create all block states
+        // First pass: create all block states and identify branch blocks
         for (MethodBlockMapDTO methodBlockMap : blockMap.methodBlockMaps) {
             String methodName = JvmMethodNameConverter.toDottedClassName(methodBlockMap.fullName);
-            Map<Integer, Integer> lineToBlockId = new HashMap<>();
+            // Collect all blocks per line, then filter to branch blocks
+            Map<Integer, List<Integer>> lineToAllBlockIds = new HashMap<>();
 
             for (BlockDataDTO block : methodBlockMap.blocks) {
                 Set<Integer> successorIds = new HashSet<>();
@@ -51,78 +76,163 @@ public class CfgCoverageTracker {
                 int totalBranches = (block.edges != null) ? block.edges.size() : 0;
                 CfgBlockState state = new CfgBlockState(block.id, successorIds, initiallyCovered, totalBranches);
 
-                // Use edge-level data when available (v3.1.0+)
+                // Check if this block has conditional branch edges
+                boolean hasConditionalEdges = false;
                 if (block.edges != null && !block.edges.isEmpty()) {
                     for (EdgeCoverageDTO edge : block.edges) {
+                        if (edge.branchType == BranchType.IF_TRUE || edge.branchType == BranchType.IF_FALSE
+                                || edge.branchType == BranchType.SWITCH_CASE
+                                || edge.branchType == BranchType.SWITCH_DEFAULT) {
+                            hasConditionalEdges = true;
+                        }
                         if (edge.hits > 0) {
                             state.coveredEdges.add(edge.targetBlockId);
-                            // Convert block map's source-level branchIndex to JDart's bytecode-level index.
-                            // Block map: branchIndex 0 = IF_TRUE (source true), 1 = IF_FALSE (source false)
-                            // JDart:     child 0 = bytecode jump taken (= source false), 1 = fall-through (= source true)
-                            // So for IF branches: invert the index. For SWITCH: no inversion needed.
                             int jdartIndex = toJdartBranchIndex(edge);
                             state.initiallyCoveredBranches.add(jdartIndex);
                             state.runtimeCoveredBranches.add(jdartIndex);
                         }
                     }
                 } else {
-                    // Fallback: old behavior for backward compatibility with data
-                    // that doesn't include edge information
                     if (initiallyCovered) {
                         state.coveredEdges.addAll(successorIds);
                     }
                 }
 
+                if (hasConditionalEdges) {
+                    conditionalBranchBlockIds.add(block.id);
+                }
+
                 blocks.put(block.id, state);
 
-                // Build line -> blockId mapping
+                // Build line -> list of block IDs mapping
                 if (block.coverageData.lines != null) {
                     for (com.kuleuven.coverage.model.LineDTO line : block.coverageData.lines) {
-                        lineToBlockId.put(line.line, block.id);
+                        lineToAllBlockIds.computeIfAbsent(line.line, k -> new ArrayList<>()).add(block.id);
                     }
                 }
             }
 
-            methodLineToBlockId.put(methodName, lineToBlockId);
+            // Build the branch block mapping: for each line, keep only blocks with conditional edges
+            Map<Integer, List<Integer>> lineToBranchBlocks = new HashMap<>();
+            for (Map.Entry<Integer, List<Integer>> entry : lineToAllBlockIds.entrySet()) {
+                int line = entry.getKey();
+                // Deduplicate block IDs (a block can appear multiple times if it has multiple lines)
+                Set<Integer> uniqueIds = new LinkedHashSet<>(entry.getValue());
+                // Filter to only conditional branch blocks
+                List<Integer> branchBlocks = new ArrayList<>();
+                for (int blockId : uniqueIds) {
+                    if (conditionalBranchBlockIds.contains(blockId)) {
+                        branchBlocks.add(blockId);
+                    }
+                }
+                // Sort by block ID (= topological order in the CFG)
+                Collections.sort(branchBlocks);
+                if (!branchBlocks.isEmpty()) {
+                    lineToBranchBlocks.put(line, branchBlocks);
+                }
+            }
+
+            methodLineToBranchBlockIds.put(methodName, lineToBranchBlocks);
         }
     }
 
     /**
-     * Get the block ID for a given instruction, or -1 if not found.
+     * Get the block ID for a given branch instruction, or -1 if not found.
+     *
+     * Uses a multi-level resolution strategy to correctly handle lines with
+     * multiple CFG blocks (e.g. compound conditions, if-body blocks):
+     * 1. Check the instruction identity cache first.
+     * 2. For lines with a single branch block, return it directly.
+     * 3. For lines with multiple branch blocks (compound conditions), use
+     *    bytecode position ordering: lower position -> lower block ID.
      */
     public int getBlockIdForInstruction(Instruction instruction) {
         if (instruction == null) {
             return -1;
         }
+
+        // Check cache
+        Integer cached = instructionBlockIdCache.get(instruction);
+        if (cached != null) {
+            return cached;
+        }
+
         MethodInfo mi = instruction.getMethodInfo();
-        Map<Integer, Integer> lineToBlock = methodLineToBlockId.get(mi.getFullName());
-        if (lineToBlock == null) {
+        String methodName = mi.getFullName();
+        Map<Integer, List<Integer>> lineToBranchBlocks = methodLineToBranchBlockIds.get(methodName);
+        if (lineToBranchBlocks == null) {
             return -1;
         }
-        Integer blockId = lineToBlock.get(instruction.getLineNumber());
-        return blockId != null ? blockId : -1;
+
+        int line = instruction.getLineNumber();
+        List<Integer> branchBlocks = lineToBranchBlocks.get(line);
+        if (branchBlocks == null || branchBlocks.isEmpty()) {
+            return -1;
+        }
+
+        if (branchBlocks.size() == 1) {
+            int blockId = branchBlocks.get(0);
+            instructionBlockIdCache.put(instruction, blockId);
+            return blockId;
+        }
+
+        // Multiple branch blocks at same line (compound condition).
+        // Use bytecode position to disambiguate.
+        return resolveMultiBlockLine(instruction, methodName, line, branchBlocks);
     }
 
     /**
-     * Extract the list of CFG branch edges taken along an execution path.
+     * Resolve block ID for an instruction at a line with multiple branch blocks.
+     * Uses the position tracker (populated by registerInstructionPosition in
+     * extractCfgEdges) to disambiguate: lowest registered position -> lowest block ID.
      *
-     * For each decision node along the path, uses the parent's branch instruction
-     * (from-block) and the child's target instruction (to-block) to identify the
-     * exact CFG edge taken. This correctly handles interprocedural paths: cross-method
-     * transitions are skipped (the block map has no cross-method successor edges),
-     * while within-method branch edges are captured precisely.
+     * If the instruction's position was NOT registered (e.g. it's a target instruction
+     * from addChildren, not a branch instruction from extractCfgEdges), returns -1.
+     * This prevents non-branch instructions from polluting the position-to-block mapping.
      */
+    private int resolveMultiBlockLine(Instruction instruction, String methodName, int line,
+                                      List<Integer> branchBlocks) {
+        int position = instruction.getPosition();
+
+        // Only resolve using positions that were pre-registered by extractCfgEdges.
+        // Do NOT add new positions here (addChildren target instructions would corrupt the mapping).
+        Map<Integer, TreeMap<Integer, Instruction>> methodTrackers = linePositionTrackers.get(methodName);
+        if (methodTrackers == null) {
+            return -1;
+        }
+        TreeMap<Integer, Instruction> posMap = methodTrackers.get(line);
+        if (posMap == null || !posMap.containsKey(position)) {
+            return -1;
+        }
+
+        // Assign registered positions to blocks: nth position -> nth block
+        int idx = 0;
+        for (Map.Entry<Integer, Instruction> entry : posMap.entrySet()) {
+            int blockId = (idx < branchBlocks.size()) ? branchBlocks.get(idx) : branchBlocks.get(branchBlocks.size() - 1);
+            instructionBlockIdCache.put(entry.getValue(), blockId);
+            idx++;
+        }
+
+        return instructionBlockIdCache.get(instruction);
+    }
+
     /**
      * Extract the branch decisions taken along an execution path.
      * Returns a list of (fromBlockId, branchIndex) pairs representing the
      * specific branches taken at each decision point.
      *
-     * Uses the parent decision's branchInsn for the from-block and determines
-     * the branch index by finding which child of the parent matches the current node.
-     * This avoids the toBlockId line-number ambiguity that caused incorrect edge matching.
+     * Uses a two-pass approach to correctly handle lines with multiple blocks:
+     * 1. First pass (bottom-up): collect all branch instructions and their indices.
+     * 2. Register all instruction positions for multi-block lines.
+     * 3. Second pass: resolve block IDs using position ordering.
+     *
+     * This ensures that for compound conditions (e.g. "if (a || b)"), all bytecode
+     * positions at the same line are known before assignment, so the nth position
+     * correctly maps to the nth block.
      */
     public List<int[]> extractCfgEdges(Node leafNode) {
-        List<int[]> branchDecisions = new ArrayList<>();
+        // First pass: collect (instruction, branchIndex) pairs
+        List<Object[]> rawEdges = new ArrayList<>(); // [Instruction, int branchIndex]
         Node current = leafNode;
 
         while (current != null) {
@@ -135,12 +245,9 @@ public class CfgCoverageTracker {
             if (parentDec != null) {
                 Instruction branchInsn = parentDec.getBranchInstruction();
                 if (branchInsn != null) {
-                    int fromBlockId = getBlockIdForInstruction(branchInsn);
-                    if (fromBlockId != -1) {
-                        int branchIndex = findChildIndex(parentDec, current);
-                        if (branchIndex != -1) {
-                            branchDecisions.add(new int[]{fromBlockId, branchIndex});
-                        }
+                    int branchIndex = findChildIndex(parentDec, current);
+                    if (branchIndex != -1) {
+                        rawEdges.add(new Object[]{branchInsn, branchIndex});
                     }
                 }
             }
@@ -148,7 +255,53 @@ public class CfgCoverageTracker {
             current = parent;
         }
 
+        // Register all instruction positions before resolving.
+        // This ensures compound conditions at the same line have all positions
+        // known, so position->block assignment is correct.
+        for (Object[] raw : rawEdges) {
+            Instruction insn = (Instruction) raw[0];
+            // Trigger position registration without caching yet
+            registerInstructionPosition(insn);
+        }
+
+        // Second pass: resolve block IDs
+        List<int[]> branchDecisions = new ArrayList<>();
+        for (Object[] raw : rawEdges) {
+            Instruction insn = (Instruction) raw[0];
+            int branchIndex = (int) raw[1];
+            int fromBlockId = getBlockIdForInstruction(insn);
+            if (fromBlockId != -1) {
+                branchDecisions.add(new int[]{fromBlockId, branchIndex});
+            }
+        }
+
         return branchDecisions;
+    }
+
+    /**
+     * Register an instruction's bytecode position for multi-block line resolution.
+     * This does NOT resolve the block ID; it only records the position so that
+     * subsequent resolution considers all known positions at the line.
+     */
+    private void registerInstructionPosition(Instruction instruction) {
+        if (instruction == null) return;
+
+        MethodInfo mi = instruction.getMethodInfo();
+        String methodName = mi.getFullName();
+        Map<Integer, List<Integer>> lineToBranchBlocks = methodLineToBranchBlockIds.get(methodName);
+        if (lineToBranchBlocks == null) return;
+
+        int line = instruction.getLineNumber();
+        List<Integer> branchBlocks = lineToBranchBlocks.get(line);
+        if (branchBlocks == null || branchBlocks.size() <= 1) return;
+
+        // Only need to register for multi-block lines
+        int position = instruction.getPosition();
+        Map<Integer, TreeMap<Integer, Instruction>> methodTrackers =
+                linePositionTrackers.computeIfAbsent(methodName, k -> new HashMap<>());
+        TreeMap<Integer, Instruction> posMap =
+                methodTrackers.computeIfAbsent(line, k -> new TreeMap<>());
+        posMap.put(position, instruction);
     }
 
     /**
@@ -176,10 +329,6 @@ public class CfgCoverageTracker {
         return -1;
     }
 
-    /**
-     * Record the branch decisions taken by a completed execution path.
-     * Each entry is (fromBlockId, branchIndex). Updates the runtime coverage tracking.
-     */
     /**
      * Record branch decisions for exploration guiding (runtime tracking).
      * Updates runtimeCoveredBranches but NOT initiallyCoveredBranches.
