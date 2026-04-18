@@ -28,6 +28,7 @@ import gov.nasa.jpf.jdart.exploration.coverage.CfgCoverageTracker;
 import gov.nasa.jpf.jdart.termination.BranchCoverageTermination;
 import gov.nasa.jpf.jdart.termination.NeverTerminate;
 import gov.nasa.jpf.jdart.termination.TerminationStrategy;
+import gov.nasa.jpf.jdart.termination.TimedOrBranchCoverageTermination;
 import com.google.gson.Gson;
 import com.kuleuven.blockmap.model.BlockMapDTO;
 import java.io.FileReader;
@@ -242,6 +243,9 @@ public class ConcolicConfig {
     // wire termination strategies that depend on the coverage tracker
     if (this.termination instanceof BranchCoverageTermination && this.coverageTracker != null) {
       ((BranchCoverageTermination) this.termination).setCoverageTracker(this.coverageTracker);
+    }
+    if (this.termination instanceof TimedOrBranchCoverageTermination && this.coverageTracker != null) {
+      ((TimedOrBranchCoverageTermination) this.termination).setCoverageTracker(this.coverageTracker);
     }
 
     if (!strategiesLogged) {
