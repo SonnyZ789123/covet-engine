@@ -130,6 +130,7 @@ public class ConcolicMethodExplorer {
   private final CfgCoverageTracker coverageTracker;
   private final boolean ignoreCoveredPaths;
   private final JPFLogger evaluationLogger = JPF.getLogger("jdart.evaluation");
+  private int evaluationPathCounter = 0;
 
   public ConcolicMethodExplorer(ConcolicConfig config, String id, MethodInfo mi) {
     // store method info and config
@@ -219,13 +220,14 @@ public class ConcolicMethodExplorer {
   }
 
   private void logEvaluation(String pathType) {
+    evaluationPathCounter++;
     Long startMs = SimpleProfiler.pending.get("JDART-run");
     long elapsedMs = startMs == null ? 0 : System.currentTimeMillis() - startMs;
     String coverageStr = coverageTracker == null
         ? "n/a"
         : String.format("%.2f%%", coverageTracker.getBranchCoveragePercentage());
-    evaluationLogger.info(String.format("elapsed=%dms branch_coverage=%s path=%s",
-        elapsedMs, coverageStr, pathType));
+    evaluationLogger.info(String.format("[%d] %-6s elapsed=%dms branch_coverage=%s",
+        evaluationPathCounter, pathType, elapsedMs, coverageStr));
   }
 
   private Set<String> getBlockHashesForCurrentPath() {
