@@ -243,7 +243,25 @@ public class ConcolicConfig {
     if (this.termination instanceof BranchCoverageTermination && this.coverageTracker != null) {
       ((BranchCoverageTermination) this.termination).setCoverageTracker(this.coverageTracker);
     }
+
+    if (!strategiesLogged) {
+      JPF.getLogger("jdart").info(String.format(
+              "%n"
+            + "  +-- JDart configuration -----------------------------+%n"
+            + "  |  Exploration strategy : %-25s |%n"
+            + "  |  Termination strategy : %-25s |%n"
+            + "  |  Coverage tracker     : %-25s |%n"
+            + "  |  Ignore covered paths : %-25s |%n"
+            + "  +----------------------------------------------------+",
+              this.explorationStrategy.getClass().getSimpleName(),
+              this.termination.getClass().getSimpleName(),
+              this.coverageTracker != null ? "loaded" : "none",
+              this.ignoreCoveredPaths));
+      strategiesLogged = true;
+    }
   }
+
+  private static boolean strategiesLogged = false;
   
   private static TerminationStrategy parseTerminationStrategy(Config conf) {
     if (!conf.hasValue("jdart.termination")) {
