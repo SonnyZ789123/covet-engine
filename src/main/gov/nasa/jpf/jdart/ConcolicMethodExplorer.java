@@ -130,7 +130,6 @@ public class ConcolicMethodExplorer {
   private final CfgCoverageTracker coverageTracker;
   private final boolean ignoreCoveredPaths;
   private final JPFLogger evaluationLogger = JPF.getLogger("jdart.evaluation");
-  private double lastLoggedCoverage = -1.0;
 
   public ConcolicMethodExplorer(ConcolicConfig config, String id, MethodInfo mi) {
     // store method info and config
@@ -207,32 +206,26 @@ public class ConcolicMethodExplorer {
       return false;
     }
     coverageTracker.recordCompletedPath(target);
-    logEvaluation();
+    logEvaluation("IGNORE");
     constraintsTree.finish(PathResult.ignore());
     return true;
   }
 
-  private void recordCompletedPathEdges() {
-    if (coverageTracker == null) {
-      return;
+  private void recordCompletedPathEdges(String pathType) {
+    if (coverageTracker != null) {
+      coverageTracker.recordCompletedPath(constraintsTree.getCurrentTarget());
     }
-    coverageTracker.recordCompletedPath(constraintsTree.getCurrentTarget());
-    logEvaluation();
+    logEvaluation(pathType);
   }
 
-  private void logEvaluation() {
-    if (coverageTracker == null) {
-      return;
-    }
-    double coverage = coverageTracker.getBranchCoveragePercentage();
-    if (coverage == lastLoggedCoverage) {
-      return;
-    }
-    lastLoggedCoverage = coverage;
+  private void logEvaluation(String pathType) {
     Long startMs = SimpleProfiler.pending.get("JDART-run");
     long elapsedMs = startMs == null ? 0 : System.currentTimeMillis() - startMs;
-    evaluationLogger.info(String.format("elapsed=%dms branch_coverage=%.2f%%",
-        elapsedMs, coverage));
+    String coverageStr = coverageTracker == null
+        ? "n/a"
+        : String.format("%.2f%%", coverageTracker.getBranchCoveragePercentage());
+    evaluationLogger.info(String.format("elapsed=%dms branch_coverage=%s path=%s",
+        elapsedMs, coverageStr, pathType));
   }
 
   private Set<String> getBlockHashesForCurrentPath() {
@@ -249,7 +242,7 @@ public class ConcolicMethodExplorer {
     }
 
     // Record edges for runtime coverage tracking
-    recordCompletedPathEdges();
+    recordCompletedPathEdges("OK");
 
     Set<String> blockHashesForCurrentPath = getBlockHashesForCurrentPath();
 
@@ -264,7 +257,7 @@ public class ConcolicMethodExplorer {
     }
 
     // Record edges for runtime coverage tracking
-    recordCompletedPathEdges();
+    recordCompletedPathEdges("ERROR");
 
     Set<String> blockHashesForCurrentPath = getBlockHashesForCurrentPath();
 
