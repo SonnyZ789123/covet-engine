@@ -23,6 +23,7 @@ public class BranchCoverageTermination extends TerminationStrategy {
   private double lastCoverage = 0.0;
   private boolean warnedMissingStrategy = false;
 
+
   public BranchCoverageTermination(int thresholdPercent) {
     if (thresholdPercent < 0 || thresholdPercent > 100) {
       throw new IllegalArgumentException(
@@ -45,12 +46,7 @@ public class BranchCoverageTermination extends TerminationStrategy {
       }
       return false;
     }
-    double coverage = coverageStrategy.getBranchCoveragePercentage();
-    if (coverage != lastCoverage) {
-      logger.info(String.format("Branch coverage: %.2f%% (target %d%%)",
-          coverage, thresholdPercent));
-      lastCoverage = coverage;
-    }
+    lastCoverage = coverageStrategy.getBranchCoveragePercentage();
     return lastCoverage >= thresholdPercent;
   }
 

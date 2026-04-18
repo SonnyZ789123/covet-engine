@@ -14,6 +14,7 @@ import gov.nasa.jpf.jdart.constraints.tree.DecisionData;
 import gov.nasa.jpf.jdart.constraints.tree.Node;
 import gov.nasa.jpf.jdart.constraints.tree.NodeType;
 import gov.nasa.jpf.util.JPFLogger;
+import gov.nasa.jpf.util.SimpleProfiler;
 import gov.nasa.jpf.vm.Instruction;
 import gov.nasa.jpf.vm.MethodInfo;
 
@@ -23,6 +24,9 @@ import java.util.*;
 
 public class CoverageHeuristicStrategy implements ExplorationStrategy {
     private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
+    private final JPFLogger evaluationLogger = JPF.getLogger("jdart.evaluation");
+
+    private double lastLoggedCoverage = -1.0;
 
     private static final String DEFAULT_CONFIG_FILE = "/jdart-project/data/coverage_heuristic.config";
 
@@ -188,6 +192,19 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
      */
     public void recordCompletedPath(Node finalTarget) {
         cfgCoverageTracker.recordCompletedPath(finalTarget);
+        logEvaluation();
+    }
+
+    private void logEvaluation() {
+        double coverage = cfgCoverageTracker.getBranchCoveragePercentage();
+        if (coverage == lastLoggedCoverage) {
+            return;
+        }
+        lastLoggedCoverage = coverage;
+        Long startMs = SimpleProfiler.pending.get("JDART-run");
+        long elapsedMs = startMs == null ? 0 : System.currentTimeMillis() - startMs;
+        evaluationLogger.info(String.format("elapsed=%dms branch_coverage=%.2f%%",
+                elapsedMs, coverage));
     }
 
     public Set<String> getBlockHashesAlongPath(Node finalTarget) {
