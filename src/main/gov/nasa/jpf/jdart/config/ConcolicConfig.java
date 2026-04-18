@@ -21,8 +21,10 @@ import gov.nasa.jpf.constraints.api.ConstraintSolver;
 import gov.nasa.jpf.constraints.solvers.ConstraintSolverFactory;
 import gov.nasa.jpf.constraints.types.TypeContext;
 import gov.nasa.jpf.jdart.ConcolicPerturbator;
+import gov.nasa.jpf.jdart.exploration.CoverageHeuristicStrategy;
 import gov.nasa.jpf.jdart.exploration.DFSStrategy;
 import gov.nasa.jpf.jdart.exploration.ExplorationStrategy;
+import gov.nasa.jpf.jdart.termination.BranchCoverageTermination;
 import gov.nasa.jpf.jdart.termination.NeverTerminate;
 import gov.nasa.jpf.jdart.termination.TerminationStrategy;
 
@@ -186,6 +188,13 @@ public class ConcolicConfig {
 
     // parse explorer
     this.explorationStrategy = parseExplorationStrategy(conf);
+
+    // wire termination strategies that depend on the exploration strategy
+    if (this.termination instanceof BranchCoverageTermination
+            && this.explorationStrategy instanceof CoverageHeuristicStrategy) {
+      ((BranchCoverageTermination) this.termination)
+              .setCoverageStrategy((CoverageHeuristicStrategy) this.explorationStrategy);
+    }
   }
   
   private static TerminationStrategy parseTerminationStrategy(Config conf) {

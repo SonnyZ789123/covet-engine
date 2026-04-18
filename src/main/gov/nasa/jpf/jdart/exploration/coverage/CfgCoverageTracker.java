@@ -57,6 +57,42 @@ public class CfgCoverageTracker {
     /** Set of block IDs that have conditional branch edges (IF or SWITCH). */
     private final Set<Integer> conditionalBranchBlockIds = new HashSet<>();
 
+    /**
+     * Total branches as defined by pathcov: sum of {@code line.branches.total}
+     * across every line of every block of every method in the block map.
+     * This is the denominator of the branch-coverage percentage and matches
+     * pathcov's {@code BranchCoverage.calculate(BlockMapDTO)}.
+     */
+    private int pathcovTotalBranches = 0;
+
+    /**
+     * Initial covered branches as reported by pathcov (sum of
+     * {@code line.branches.covered}) - i.e. branches hit by the existing test
+     * suite before JDart starts.
+     */
+    private int pathcovInitialCovered = 0;
+
+    /**
+     * Conditional branches (IF_TRUE/IF_FALSE/SWITCH_*) that pathcov reports as
+     * uncovered initially. Encoded as {@code (long) blockId << 32 | branchIndex}.
+     * When JDart covers any of these at runtime they bump the covered count.
+     */
+    private final Set<Long> initiallyUncoveredConditionalBranches = new HashSet<>();
+
+    /**
+     * For each conditional branch block, the (method, source line) where the
+     * branching bytecode lives. pathcov sums {@code line.branches} per
+     * (block, line entry), so the same line can contribute multiple times to
+     * the totals; the multiplicity below records how many times.
+     */
+    private final Map<Integer, String> blockBranchSourceMethod = new HashMap<>();
+    private final Map<Integer, Integer> blockBranchSourceLine = new HashMap<>();
+    private final Map<String, Integer> lineMultiplicity = new HashMap<>();
+
+    private static String lineKey(String method, int line) {
+        return method + "#" + line;
+    }
+
     public CfgCoverageTracker(BlockMapDTO blockMap) {
         // First pass: create all block states and identify branch blocks
         for (MethodBlockMapDTO methodBlockMap : blockMap.methodBlockMaps) {
@@ -80,9 +116,12 @@ public class CfgCoverageTracker {
                 boolean hasConditionalEdges = false;
                 if (block.edges != null && !block.edges.isEmpty()) {
                     for (EdgeCoverageDTO edge : block.edges) {
-                        if (edge.branchType == BranchType.IF_TRUE || edge.branchType == BranchType.IF_FALSE
+                        boolean conditional =
+                                edge.branchType == BranchType.IF_TRUE
+                                || edge.branchType == BranchType.IF_FALSE
                                 || edge.branchType == BranchType.SWITCH_CASE
-                                || edge.branchType == BranchType.SWITCH_DEFAULT) {
+                                || edge.branchType == BranchType.SWITCH_DEFAULT;
+                        if (conditional) {
                             hasConditionalEdges = true;
                         }
                         if (edge.hits > 0) {
@@ -90,6 +129,9 @@ public class CfgCoverageTracker {
                             int jdartIndex = toJdartBranchIndex(edge);
                             state.initiallyCoveredBranches.add(jdartIndex);
                             state.runtimeCoveredBranches.add(jdartIndex);
+                        } else if (conditional) {
+                            initiallyUncoveredConditionalBranches.add(
+                                    encodeBlockBranch(block.id, toJdartBranchIndex(edge)));
                         }
                     }
                 } else {
@@ -98,8 +140,31 @@ public class CfgCoverageTracker {
                     }
                 }
 
+                // Aggregate pathcov-style branch totals from line.branches summary.
+                // pathcov sums per (block, line entry), so the same line in
+                // multiple blocks (or repeated within a block) is counted that
+                // many times - match it exactly here.
+                int branchSourceLine = -1;
+                if (block.coverageData.lines != null) {
+                    for (com.kuleuven.coverage.model.LineDTO line : block.coverageData.lines) {
+                        if (line.branches != null) {
+                            pathcovTotalBranches += line.branches.total;
+                            pathcovInitialCovered += line.branches.covered;
+                            String key = lineKey(methodName, line.line);
+                            lineMultiplicity.merge(key, 1, Integer::sum);
+                            if (line.branches.total > 0 && branchSourceLine == -1) {
+                                branchSourceLine = line.line;
+                            }
+                        }
+                    }
+                }
+
                 if (hasConditionalEdges) {
                     conditionalBranchBlockIds.add(block.id);
+                    if (branchSourceLine != -1) {
+                        blockBranchSourceMethod.put(block.id, methodName);
+                        blockBranchSourceLine.put(block.id, branchSourceLine);
+                    }
                 }
 
                 blocks.put(block.id, state);
@@ -411,6 +476,36 @@ public class CfgCoverageTracker {
             return 0;
         }
         return block.isFullyCovered() ? 1 : 0;
+    }
+
+    /**
+     * Effective branch coverage as a percentage in [0, 100]. Uses the same
+     * denominator and initial numerator as pathcov's
+     * {@code BranchCoverage.calculate(BlockMapDTO)} (sum of
+     * {@code line.branches.total} and {@code line.branches.covered}), then
+     * adds any conditional branches JDart has covered at runtime that were
+     * uncovered initially. Returns 100 when there are no branches.
+     */
+    public double getBranchCoveragePercentage() {
+        int newlyCovered = 0;
+        for (Long key : initiallyUncoveredConditionalBranches) {
+            int blockId = (int) (key >> 32);
+            int branchIndex = key.intValue();
+            CfgBlockState b = blocks.get(blockId);
+            if (b == null || !b.runtimeCoveredBranches.contains(branchIndex)) continue;
+            String method = blockBranchSourceMethod.get(blockId);
+            Integer line = blockBranchSourceLine.get(blockId);
+            int mult = (method != null && line != null)
+                    ? lineMultiplicity.getOrDefault(lineKey(method, line), 1)
+                    : 1;
+            newlyCovered += mult;
+        }
+        int covered = Math.min(pathcovInitialCovered + newlyCovered, pathcovTotalBranches);
+        return pathcovTotalBranches == 0 ? 100.0 : (100.0 * covered) / pathcovTotalBranches;
+    }
+
+    private static long encodeBlockBranch(int blockId, int branchIndex) {
+        return ((long) blockId << 32) | (branchIndex & 0xFFFFFFFFL);
     }
 
     /**

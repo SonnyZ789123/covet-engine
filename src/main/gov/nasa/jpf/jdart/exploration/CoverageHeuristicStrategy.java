@@ -222,6 +222,10 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
      * the edge from the branch instruction's block to the taken branch's target block.
      * Cross-method transitions are skipped (the block map has method-local edges only).
      */
+    public double getBranchCoveragePercentage() {
+        return cfgCoverageTracker.getBranchCoveragePercentage();
+    }
+
     public boolean pathIsBlockCovered(Node finalTarget) {
         List<int[]> edges = cfgCoverageTracker.extractCfgEdges(finalTarget);
         boolean result = cfgCoverageTracker.areAllEdgesCovered(edges);
