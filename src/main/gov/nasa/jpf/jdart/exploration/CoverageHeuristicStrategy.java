@@ -14,7 +14,6 @@ import gov.nasa.jpf.jdart.constraints.tree.DecisionData;
 import gov.nasa.jpf.jdart.constraints.tree.Node;
 import gov.nasa.jpf.jdart.constraints.tree.NodeType;
 import gov.nasa.jpf.util.JPFLogger;
-import gov.nasa.jpf.util.SimpleProfiler;
 import gov.nasa.jpf.vm.Instruction;
 import gov.nasa.jpf.vm.MethodInfo;
 
@@ -24,15 +23,16 @@ import java.util.*;
 
 public class CoverageHeuristicStrategy implements ExplorationStrategy {
     private final JPFLogger debugLogger = JPF.getLogger("jdart.debug");
-    private final JPFLogger evaluationLogger = JPF.getLogger("jdart.evaluation");
-
-    private double lastLoggedCoverage = -1.0;
 
     private static final String DEFAULT_CONFIG_FILE = "/jdart-project/data/coverage_heuristic.config";
 
     public final BlockMapCoverage blockMapCoverage;
     public final boolean shouldIgnoreCoveredPaths;
     private final CfgCoverageTracker cfgCoverageTracker;
+
+    public CfgCoverageTracker getCoverageTracker() {
+        return cfgCoverageTracker;
+    }
 
     private Properties readConfiguration(String configFilePath) {
         Properties props = new Properties();
@@ -190,23 +190,6 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
      * This updates the runtime coverage tracking so that future paths
      * can be correctly identified as duplicates or not.
      */
-    public void recordCompletedPath(Node finalTarget) {
-        cfgCoverageTracker.recordCompletedPath(finalTarget);
-        logEvaluation();
-    }
-
-    private void logEvaluation() {
-        double coverage = cfgCoverageTracker.getBranchCoveragePercentage();
-        if (coverage == lastLoggedCoverage) {
-            return;
-        }
-        lastLoggedCoverage = coverage;
-        Long startMs = SimpleProfiler.pending.get("JDART-run");
-        long elapsedMs = startMs == null ? 0 : System.currentTimeMillis() - startMs;
-        evaluationLogger.info(String.format("elapsed=%dms branch_coverage=%.2f%%",
-                elapsedMs, coverage));
-    }
-
     public Set<String> getBlockHashesAlongPath(Node finalTarget) {
         Set<String> blockHashes = new HashSet<>();
 
@@ -239,10 +222,6 @@ public class CoverageHeuristicStrategy implements ExplorationStrategy {
      * the edge from the branch instruction's block to the taken branch's target block.
      * Cross-method transitions are skipped (the block map has method-local edges only).
      */
-    public double getBranchCoveragePercentage() {
-        return cfgCoverageTracker.getBranchCoveragePercentage();
-    }
-
     public boolean pathIsBlockCovered(Node finalTarget) {
         List<int[]> edges = cfgCoverageTracker.extractCfgEdges(finalTarget);
         boolean result = cfgCoverageTracker.areAllEdgesCovered(edges);

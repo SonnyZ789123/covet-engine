@@ -33,8 +33,11 @@ import gov.nasa.jpf.jdart.config.ParamConfig;
 import gov.nasa.jpf.jdart.constraints.*;
 import gov.nasa.jpf.jdart.constraints.tree.BranchEffect;
 import gov.nasa.jpf.jdart.constraints.tree.InstructionBranch;
+import gov.nasa.jpf.jdart.constraints.tree.Node;
 import gov.nasa.jpf.jdart.exploration.CoverageHeuristicStrategy;
 import gov.nasa.jpf.jdart.exploration.ExplorationStrategy;
+import gov.nasa.jpf.jdart.exploration.coverage.CfgCoverageTracker;
+import gov.nasa.jpf.util.SimpleProfiler;
 import gov.nasa.jpf.jdart.objects.SymbolicObjectsContext;
 import gov.nasa.jpf.util.JPFLogger;
 import gov.nasa.jpf.vm.ClassInfo;
@@ -123,21 +126,27 @@ public class ConcolicMethodExplorer {
    * exploration strategy
    */
   private final ExplorationStrategy explorationStrategy;
-  
+
+  private final CfgCoverageTracker coverageTracker;
+  private final boolean ignoreCoveredPaths;
+  private final JPFLogger evaluationLogger = JPF.getLogger("jdart.evaluation");
+  private double lastLoggedCoverage = -1.0;
 
   public ConcolicMethodExplorer(ConcolicConfig config, String id, MethodInfo mi) {
     // store method info and config
     this.methodInfo = mi;
     this.methodConfig = config.getMethodConfig(id);
     this.anaConf = methodConfig.getAnalysisConfig();
-    
+
     // get preset values
     ConcolicValues vals = methodConfig.getConcolicValues();
-    
+
     // create a constraints tree
-    this.solverCtx = config.getSolver().createContext();    
+    this.solverCtx = config.getSolver().createContext();
     this.constraintsTree = new InternalConstraintsTree(solverCtx, anaConf, vals);
     this.explorationStrategy = config.getExplorationStrategy();
+    this.coverageTracker = config.getCoverageTracker();
+    this.ignoreCoveredPaths = config.shouldIgnoreCoveredPaths();
   }
   
   public void setExplore(boolean explore) {
@@ -189,32 +198,41 @@ public class ConcolicMethodExplorer {
   }
 
   private boolean checkCoveredPathOnCompletion() {
-    if (explorationStrategy instanceof CoverageHeuristicStrategy) {
-      CoverageHeuristicStrategy coverageHeuristicStrategy = (CoverageHeuristicStrategy) explorationStrategy;
-
-      if (!coverageHeuristicStrategy.shouldIgnoreCoveredPaths) {
-        return false;
-      }
-
-      boolean coveredPath = coverageHeuristicStrategy.pathIsBlockCovered(constraintsTree.getCurrentTarget());
-
-      if (!coveredPath) {
-          return false;
-      } else {
-          // Record edges before marking as IGNORE, so the tracker stays up to date
-          coverageHeuristicStrategy.recordCompletedPath(constraintsTree.getCurrentTarget());
-          constraintsTree.finish(PathResult.ignore());
-          return true;
-      }
+    if (coverageTracker == null || !ignoreCoveredPaths) {
+      return false;
     }
-    return false;
+    Node target = constraintsTree.getCurrentTarget();
+    boolean coveredPath = coverageTracker.areAllEdgesCovered(coverageTracker.extractCfgEdges(target));
+    if (!coveredPath) {
+      return false;
+    }
+    coverageTracker.recordCompletedPath(target);
+    logEvaluation();
+    constraintsTree.finish(PathResult.ignore());
+    return true;
   }
 
   private void recordCompletedPathEdges() {
-    if (explorationStrategy instanceof CoverageHeuristicStrategy) {
-      CoverageHeuristicStrategy coverageHeuristicStrategy = (CoverageHeuristicStrategy) explorationStrategy;
-      coverageHeuristicStrategy.recordCompletedPath(constraintsTree.getCurrentTarget());
+    if (coverageTracker == null) {
+      return;
     }
+    coverageTracker.recordCompletedPath(constraintsTree.getCurrentTarget());
+    logEvaluation();
+  }
+
+  private void logEvaluation() {
+    if (coverageTracker == null) {
+      return;
+    }
+    double coverage = coverageTracker.getBranchCoveragePercentage();
+    if (coverage == lastLoggedCoverage) {
+      return;
+    }
+    lastLoggedCoverage = coverage;
+    Long startMs = SimpleProfiler.pending.get("JDART-run");
+    long elapsedMs = startMs == null ? 0 : System.currentTimeMillis() - startMs;
+    evaluationLogger.info(String.format("elapsed=%dms branch_coverage=%.2f%%",
+        elapsedMs, coverage));
   }
 
   private Set<String> getBlockHashesForCurrentPath() {

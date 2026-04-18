@@ -24,9 +24,14 @@ import gov.nasa.jpf.jdart.ConcolicPerturbator;
 import gov.nasa.jpf.jdart.exploration.CoverageHeuristicStrategy;
 import gov.nasa.jpf.jdart.exploration.DFSStrategy;
 import gov.nasa.jpf.jdart.exploration.ExplorationStrategy;
+import gov.nasa.jpf.jdart.exploration.coverage.CfgCoverageTracker;
 import gov.nasa.jpf.jdart.termination.BranchCoverageTermination;
 import gov.nasa.jpf.jdart.termination.NeverTerminate;
 import gov.nasa.jpf.jdart.termination.TerminationStrategy;
+import com.google.gson.Gson;
+import com.kuleuven.blockmap.model.BlockMapDTO;
+import java.io.FileReader;
+import java.io.Reader;
 
 import java.util.*;
 
@@ -66,6 +71,16 @@ public class ConcolicConfig {
    * strategy for exploring the symbolic execution tree
    */
   private ExplorationStrategy explorationStrategy;
+
+  /**
+   * shared CFG coverage tracker (optional). Populated when the coverage
+   * heuristic is in use, or when {@code jdart.coverage.block_map_path} is
+   * set in the JPF config so DFS/BFS can also collect coverage telemetry.
+   */
+  private CfgCoverageTracker coverageTracker;
+
+  /** Whether to mark already-covered paths as IGNORE. */
+  private boolean ignoreCoveredPaths;
 
 
   /**
@@ -107,6 +122,22 @@ public class ConcolicConfig {
 
   public ExplorationStrategy getExplorationStrategy() {
       return this.explorationStrategy;
+  }
+
+  /**
+   * @return the shared CFG coverage tracker, or {@code null} if no block map
+   *         was loaded.
+   */
+  public CfgCoverageTracker getCoverageTracker() {
+    return this.coverageTracker;
+  }
+
+  /**
+   * @return whether the explorer should mark already-covered paths as IGNORE.
+   *         Only meaningful when {@link #getCoverageTracker()} is non-null.
+   */
+  public boolean shouldIgnoreCoveredPaths() {
+    return this.ignoreCoveredPaths;
   }
 
   /** 
@@ -189,11 +220,28 @@ public class ConcolicConfig {
     // parse explorer
     this.explorationStrategy = parseExplorationStrategy(conf);
 
-    // wire termination strategies that depend on the exploration strategy
-    if (this.termination instanceof BranchCoverageTermination
-            && this.explorationStrategy instanceof CoverageHeuristicStrategy) {
-      ((BranchCoverageTermination) this.termination)
-              .setCoverageStrategy((CoverageHeuristicStrategy) this.explorationStrategy);
+    // resolve the shared coverage tracker. The coverage heuristic builds its
+    // own tracker (back-compat); for DFS/BFS the user can opt in via the
+    // top-level JPF config keys jdart.coverage.block_map_path and
+    // jdart.coverage.ignore_covered_paths.
+    if (this.explorationStrategy instanceof CoverageHeuristicStrategy) {
+      CoverageHeuristicStrategy chs = (CoverageHeuristicStrategy) this.explorationStrategy;
+      this.coverageTracker = chs.getCoverageTracker();
+      this.ignoreCoveredPaths = chs.shouldIgnoreCoveredPaths;
+    } else if (conf.hasValue("jdart.coverage.block_map_path")) {
+      String path = conf.getString("jdart.coverage.block_map_path");
+      try (Reader reader = new FileReader(path)) {
+        BlockMapDTO bm = new Gson().fromJson(reader, BlockMapDTO.class);
+        this.coverageTracker = new CfgCoverageTracker(bm);
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to load block map at " + path, e);
+      }
+      this.ignoreCoveredPaths = conf.getBoolean("jdart.coverage.ignore_covered_paths", false);
+    }
+
+    // wire termination strategies that depend on the coverage tracker
+    if (this.termination instanceof BranchCoverageTermination && this.coverageTracker != null) {
+      ((BranchCoverageTermination) this.termination).setCoverageTracker(this.coverageTracker);
     }
   }
   

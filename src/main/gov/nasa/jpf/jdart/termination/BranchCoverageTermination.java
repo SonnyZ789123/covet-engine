@@ -1,7 +1,7 @@
 package gov.nasa.jpf.jdart.termination;
 
 import gov.nasa.jpf.JPF;
-import gov.nasa.jpf.jdart.exploration.CoverageHeuristicStrategy;
+import gov.nasa.jpf.jdart.exploration.coverage.CfgCoverageTracker;
 import gov.nasa.jpf.util.JPFLogger;
 
 /**
@@ -12,17 +12,18 @@ import gov.nasa.jpf.util.JPFLogger;
  * Configure in sut.jpf:
  *   jdart.termination = gov.nasa.jpf.jdart.termination.BranchCoverageTermination,80
  *
- * Requires the exploration strategy to be {@link CoverageHeuristicStrategy};
- * with any other strategy this terminator never fires.
+ * Requires a {@link CfgCoverageTracker} to be available on the active
+ * {@link gov.nasa.jpf.jdart.config.ConcolicConfig} (loaded automatically by
+ * the coverage heuristic, or via {@code jdart.coverage.block_map_path} for
+ * other strategies). Without one this terminator never fires.
  */
 public class BranchCoverageTermination extends TerminationStrategy {
   private static final JPFLogger logger = JPF.getLogger("jdart");
 
   private final int thresholdPercent;
-  private CoverageHeuristicStrategy coverageStrategy;
+  private CfgCoverageTracker coverageTracker;
   private double lastCoverage = 0.0;
-  private boolean warnedMissingStrategy = false;
-
+  private boolean warnedMissingTracker = false;
 
   public BranchCoverageTermination(int thresholdPercent) {
     if (thresholdPercent < 0 || thresholdPercent > 100) {
@@ -32,21 +33,21 @@ public class BranchCoverageTermination extends TerminationStrategy {
     this.thresholdPercent = thresholdPercent;
   }
 
-  public void setCoverageStrategy(CoverageHeuristicStrategy strategy) {
-    this.coverageStrategy = strategy;
+  public void setCoverageTracker(CfgCoverageTracker tracker) {
+    this.coverageTracker = tracker;
   }
 
   @Override
   public boolean isDone() {
-    if (coverageStrategy == null) {
-      if (!warnedMissingStrategy) {
-        logger.warning("BranchCoverageTermination requires CoverageHeuristicStrategy; "
-            + "never terminating.");
-        warnedMissingStrategy = true;
+    if (coverageTracker == null) {
+      if (!warnedMissingTracker) {
+        logger.warning("BranchCoverageTermination requires a coverage tracker "
+            + "(coverage heuristic or jdart.coverage.block_map_path); never terminating.");
+        warnedMissingTracker = true;
       }
       return false;
     }
-    lastCoverage = coverageStrategy.getBranchCoveragePercentage();
+    lastCoverage = coverageTracker.getBranchCoveragePercentage();
     return lastCoverage >= thresholdPercent;
   }
 
