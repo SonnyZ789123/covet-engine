@@ -23,6 +23,7 @@ import gov.nasa.jpf.search.Search;
 import gov.nasa.jpf.util.JPFLogger;
 import gov.nasa.jpf.util.SimpleProfiler;
 import gov.nasa.jpf.vm.*;
+import java.util.logging.Level;
 
 /**
  * listener steering concolic execution.
@@ -42,9 +43,19 @@ public class ConcolicListener extends Perturbator {
     logger.finest("ConcolicListener()");
   }
 
+  private static String safeInstructionString(Instruction insn) {
+    try {
+      return String.valueOf(insn);
+    } catch (Throwable t) {
+      return insn.getClass().getName() + " [toString() failed: " + t.getClass().getSimpleName() + "]";
+    }
+  }
+
   @Override
   public void executeInstruction(VM vm, ThreadInfo ti, Instruction insnToExecute) {
-    instructionLogger.finest("[insn_index=" + insnToExecute.getInstructionIndex() + "] " + insnToExecute);
+    if (instructionLogger.isLoggable(Level.FINEST)) {
+      instructionLogger.finest("[insn_index=" + insnToExecute.getInstructionIndex() + "] " + safeInstructionString(insnToExecute));
+    }
 
     super.executeInstruction(vm, ti, insnToExecute);
   }
