@@ -1,0 +1,21 @@
+COVET Engine
+Copyright 2025-2026 Yoran Mertens
+
+This product includes software developed as part of a master's thesis on
+guided concolic execution for Java test generation, and is licensed under
+the Apache License, Version 2.0 (see LICENSE).
+
+This product is a derivative work of JDart, originally developed at NASA
+Ames Research Center and Carnegie Mellon University Silicon Valley Campus,
+and licensed under the Apache License, Version 2.0:
+
+  https://github.com/psycopaths/jdart
+
+Portions of this product include code with the following upstream copyright
+notices, retained from JDart and its provisioning scripts:
+
+  Copyright (C) 2015, United States Government, as represented by the
+  Administrator of the National Aeronautics and Space Administration.
+  All rights reserved.
+
+  Copyright 2016 Marko Dimjasevic
