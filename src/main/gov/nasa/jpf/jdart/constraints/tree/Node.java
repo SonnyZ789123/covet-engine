@@ -181,10 +181,12 @@ public final class Node {
     }
 
     public void markDontKnowNode() {
-        // Should only mark an unexplored node as dont-know
-        // Maybe it's possible to mark a DONT_KNOW node again when the decision call invokes failCurrentTarget and
-        // the current target was already marked as DONT_KNOW. This will result that we decrement open children
-        // multiple times.
+        // Should only mark an unexplored node as dont-know. Re-marking an already-DONT_KNOW node
+        // happens when decision() invokes failCurrentTarget on a node that was already flagged
+        // DONT_KNOW on a previous divergence - tolerate it and skip the re-mark instead of asserting.
+        if (dataType == NodeType.DONT_KNOW) {
+            return;
+        }
         assert dataType == NodeType.VIRGIN;
 
         markNode(NodeType.DONT_KNOW, DontKnowData.getInstance());

@@ -166,6 +166,65 @@ public class JPF_java_lang_Math extends gov.nasa.jpf.vm.JPF_java_lang_Math {
 
   @MJI
   @SymbolicPeer
+  public int abs__I__I(MJIEnv env, int clsRef, int a) {
+    Expression<Integer> asym = argAttribute(env, BuiltinTypes.SINT32);
+    if(asym != null) {
+      Expression<Integer> symReturn = ite(gte(asym, new Constant<>(BuiltinTypes.SINT32, 0)), asym, new UnaryMinus<>(asym));
+      env.setReturnAttribute(symReturn);
+    }
+    return Math.abs(a);
+  }
+
+  @MJI
+  @SymbolicPeer
+  public int max__II__I(MJIEnv env, int clsRef, int x, int y) {
+    Expression<Integer> xsym = argAttribute(env, BuiltinTypes.SINT32, 0);
+    Expression<Integer> ysym = argAttribute(env, BuiltinTypes.SINT32, 1);
+    if(xsym != null && ysym != null) {
+      Expression<Integer> symReturn = ite(lt(xsym, ysym), ysym, xsym);
+      env.setReturnAttribute(symReturn);
+    }
+    return Math.max(x, y);
+  }
+
+  @MJI
+  @SymbolicPeer
+  public int min__II__I(MJIEnv env, int clsRef, int x, int y) {
+    Expression<Integer> xsym = argAttribute(env, BuiltinTypes.SINT32, 0);
+    Expression<Integer> ysym = argAttribute(env, BuiltinTypes.SINT32, 1);
+    if(xsym != null && ysym != null) {
+      Expression<Integer> symReturn = ite(lt(xsym, ysym), xsym, ysym);
+      env.setReturnAttribute(symReturn);
+    }
+    return Math.min(x, y);
+  }
+
+  @MJI
+  @SymbolicPeer
+  public long max__JJ__J(MJIEnv env, int clsRef, long x, long y) {
+    Expression<Long> xsym = argAttribute(env, BuiltinTypes.SINT64, 0);
+    Expression<Long> ysym = argAttribute(env, BuiltinTypes.SINT64, 1);
+    if(xsym != null && ysym != null) {
+      Expression<Long> symReturn = ite(lt(xsym, ysym), ysym, xsym);
+      env.setReturnAttribute(symReturn);
+    }
+    return Math.max(x, y);
+  }
+
+  @MJI
+  @SymbolicPeer
+  public long min__JJ__J(MJIEnv env, int clsRef, long x, long y) {
+    Expression<Long> xsym = argAttribute(env, BuiltinTypes.SINT64, 0);
+    Expression<Long> ysym = argAttribute(env, BuiltinTypes.SINT64, 1);
+    if(xsym != null && ysym != null) {
+      Expression<Long> symReturn = ite(lt(xsym, ysym), xsym, ysym);
+      env.setReturnAttribute(symReturn);
+    }
+    return Math.min(x, y);
+  }
+
+  @MJI
+  @SymbolicPeer
   public double sin__D__D(MJIEnv env, int clsRef, double a) {
     attachSymbolicReturnFunc(env, MathFunctions.SIN);
     return Math.sin(a);
