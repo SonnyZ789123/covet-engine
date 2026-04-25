@@ -1,156 +1,122 @@
-# JDart #
-JDart is a tool for performing *concolic execution* on a Java program. It is written as an extension to NASA Java Pathfinder (JPF).  The aim
-of concolic execution is to explore additional behavior in the program by generating
-input values which will result in a different path being taken through a program
-(or method).
+# COVET Engine
 
-To cite JDart, please use the most recent paper that was accepted at TACAS 2016:
+The **COVET Engine** is the concolic execution component of the **COVET** test-generation pipeline. It runs a Java method with concrete inputs while tracking symbolic path constraints, negates a constraint after each path, and asks Z3 for new inputs until the path tree is exhausted or a budget runs out. From the recorded paths it generates a JUnit test suite (`assertEquals` for `OK` paths, `assertThrows` for `ERROR` paths).
 
-* Kasper Luckow, Marko Dimjasevic, Dimitra Giannakopoulou, Falk Howar, Malte Isberner, Temesghen Kahsai, Zvonimir Rakamaric, Vishwanath Raman, **JDart: A Dynamic Symbolic Analysis Framework**, 22nd International Conference on Tools and Algorithms for the Construction and Analysis of Systems (TACAS 2016), \[[pdf](http://soarlab.org/publications/tacas2016-ldghikrr.pdf)\] \[[bibtex](http://soarlab.org/publications/tacas2016-ldghikrr.bib)\].
+It is built on top of NASA's [JDart][jdart] (concolic execution on Java PathFinder). The main thesis contribution layered on top is the **`CoverageHeuristicStrategy`**: a JDart exploration strategy that consumes a coverage block map produced by `pathcov` and steers exploration toward uncovered edges.
 
-If you want to repeat experiments reported in the paper, use a
-[reproducible research environment in Aptlab][4].
+## Where it fits
 
-## Installation ##
-There are two different ways of installing JDart:
-* Virtual machine with Docker or Vagrant
-* Installation on local machine
+```
+pathcov  ──> icfg_block_map.json ──>  covet-engine  ──>  JUnit test suite
+                                       (this repo)
+```
 
-With Docker or Vagrant, all the installation steps are automatically performed, creating a complete environment that can be used to run JDart.
-You can skip to the [Using JDart](#using-jdart) section.
+The full pipeline (config generation, container orchestration, pathcov ⇄ covet-engine wiring) lives in the sibling `coverage-guided-concolic-pipeline` repo. This repository is just the engine.
 
-### Docker
-Assuming you have [Docker][9] installed, simply run:
+## What can be symbolic
+
+Only primitives induce branches that the engine explores: `int`, `long`, `short`, `byte`, `char`, `boolean`, `float`, `double`, primitive fields of objects, and elements of primitive arrays (length is fixed). Strings, user-defined classes, multi-dimensional arrays, and non-primitive object fields are always concrete. If the real method is not directly addressable through primitive parameters, target a thin primitive-only wrapper instead.
+
+## Building and running
+
+The engine requires Java 8 and a few legacy dependencies (jpf-core 8.0, jConstraints, jConstraints-z3, Z3 4.4.1), so it runs inside a Docker image (`sonnyz789123/jdart-image:<version>`). The local `covet-engine` source is bind-mounted into the container during development.
 
 ```bash
-$ docker build -t jdart .
-# Will take some time to build the image...
-$ docker run -it jdart
+# Enter the container
+docker exec -it jdart /bin/bash
+
+# Compile (the in-container path is still /jdart-project/jdart for now)
+cd /jdart-project/jdart && ant
+
+# Run on a SUT
+/jdart-project/jpf-core/bin/jpf /configs/sut.jpf
 ```
 
-### Vagrant
-For this to work, you will have to install [Vagrant][6] and either [VirtualBox][7] or [libvirt][8].
-Assuming those are installed, simply run:
+`sut.jpf` is bind-mounted from the host. The container, image, and config generation are managed by the `coverage-guided-concolic-pipeline` orchestrator.
 
-```bash
-$ vagrant up
-```
-The command will take about 20 minutes depending on your machine.
+## Configuration
 
+The COVET Engine is driven by JPF-style `.jpf` property files. The minimum config:
 
-### Installing JDart Locally
-The prerequisites for JDart are:
-* JPF-core 8
-* jConstraints
-* Adding jConstraints solver plugins, e.g., jConstraints-z3 for interfacing with Z3
-
-The following provides installation instructions for each of these components.
-
-#### JPF-core 8 
-JDart is compatible with version 8 of the Java PathFinder framework. Please make sure
-you have the most recent version of [jpf-core][0].
-
-**Step 1:** Clone the `jpf-core` repository:
-```bash
-$ hg clone http://babelfish.arc.nasa.gov/hg/jpf/jpf-core
-```
-
-**Step 2:** Build *jpf-core*
-```bash
-$ ant
-```
-
-**Step 3:** Make sure the `jpf-core` property in your `site.properties` (in `$HOME/.jpf`) points to the
-   respective directory. Also make sure to add the property to `extensions`. In summary, your `site.properties` file should contain the following:
-```bash
-$ vim ~/.jpf/site.properties
-
-# ...
-jpf-core = /path/to/jpf-core
-extensions=${jpf-core}
-```
-
-#### jConstraints
-JDart uses the [jConstraints][1] library as an abstraction layer for interfacing
-the solver. jConstraints uses plugins for supporting multiple constraint solvers.
-For licensing reasons no plugin is included in JDart. 
-
-In order to run JDart you have to install jConstraints **and** a plugin for **at least** one constraint solver.
-
-jConstraints supports a variety of solvers. Please consult the respective installation instructions for each of them by accessing the modules on the main GitHub organization, [Psycopaths][3].
-
-In summary:
-
-**Step 1:** Follow the installation instructions for [jConstraints][1]
-
-**Step 2:** Assuming you would like to have Z3 support, follow the installation instructions for [jConstraints-z3][5]. Alternatively, have a look at the other solver plugins for jConstraints on [Psycopaths' GitHub org][3].
-
-
-#### Installing JDart
-**Step 1:** Clone the `JDart` repository:
-```bash
-$ git clone https://github.com/psycopaths/jdart.git
-```
-
-**Step 2:** Make sure that your `site.properties` contains the appropriate entry for the `jpf-jdart`
-property. You can have additional JPF modules installed, but the minimum configuration for JDart should look like the following in `site.properties`: 
-```bash
-$ vim ~/.jpf/site.properties
-
-# ...
-jpf-core = /path/to/jpf-core
-jpf-jdart = /path/to/jdart
-
-extensions=${jpf-core}
-```
-
-Note that the extensions property **is not** updated with the `jpf-jdart` property. This is intentional. Instead, use the `@using = jpf-jdart` directive in your application `jpf` file. 
-
-**Step 3:** Installing JDart is as simple as just running the ant build ant build in the JDart directory:
-```bash
-$ cd /path/to/jdart 
-$ ant
-```
-
-You should now be ready to use JDart.
-
-## Using JDart
-The analysis configuration is specified in a jpf application properties file. The minimum configuration required is:
-```
+```properties
 @using = jpf-jdart
 
-# Specify the analysis shell. JDart includes a couple of those in addition to the standard JDart shell, e.g., the MethodSummarizer
-shell=gov.nasa.jpf.jdart.JDart
+shell        = gov.nasa.jpf.jdart.JDart
+symbolic.dp  = z3
 
-# Specify the constraint solver. Can be any of the jConstraints solver plugins
-symbolic.dp=z3
-
-# Provide the fully qualified class name of the entry point of the SUT
-target=features.simple.Input
-
-# Set up the concolic method with symbolic/concrete parameters. See the wiki for more details
-concolic.method.bar=features.simple.Input.bar(d:double)
-
-# Specify the concolic method configuration object to use
-concolic.method=bar
-
+target                  = features.simple.Input
+concolic.method.bar     = features.simple.Input.bar(d:double)
+concolic.method         = bar
 ```
 
-For an example of how to configure JDart, please have a look at the `test_xxx.jpf` files
-in `src/examples/features/simple`. JDart can be run on these examples using the `jpf` binary in jpf-core:
-```bash
-$ /path/to/jpf-core/bin/jpf /path/to/jdart/src/examples/features/simple/test_foo.jpf
+The orchestrator generates a layered chain:
+
+```
+sut.jpf            <-- user-editable
+  @includes jdart.jpf       <-- engine defaults (exploration, termination, solver)
+  @includes sut_gen.jpf     <-- generated (target class, classpath, method)
 ```
 
-The documentation for the concolic execution configuration can be found in the wiki.
+### Exploration strategies
 
+| Strategy | Class | Notes |
+|----------|-------|-------|
+| **CoverageHeuristic** | `gov.nasa.jpf.jdart.exploration.CoverageHeuristicStrategy` | Default. Reads the pathcov block map; primary sort = edge coverage weight, secondary = depth. |
+| DFS | `gov.nasa.jpf.jdart.exploration.DFSStrategy` | Stock JDart depth-first. |
+| BFS | `gov.nasa.jpf.jdart.exploration.BFSStrategy` | Stock JDart breadth-first. |
 
-[0]: http://babelfish.arc.nasa.gov/trac/jpf/wiki/projects/jpf-core
-[1]: https://github.com/psycopaths/jConstraints
-[3]: https://github.com/psycopaths
-[4]: https://www.aptlab.net/p/CAVA/jdart-tacas-2016-v4
-[5]: https://github.com/psycopaths/jConstraints-z3
-[6]: https://www.vagrantup.com/
-[7]: https://www.virtualbox.org/
-[8]: https://libvirt.org/
-[9]: https://www.docker.com/
+The coverage tracker (`CfgCoverageTracker`) is owned by `ConcolicConfig`, not by the strategy. The heuristic registers it from `coverage_heuristic.config`; DFS and BFS opt in via top-level keys:
+
+```properties
+jdart.coverage.block_map_path     = /data/blockmaps/icfg_block_map.json
+jdart.coverage.ignore_covered_paths = true   # default false
+```
+
+When the tracker is present, three behaviours light up regardless of strategy:
+- `jdart.evaluation` log line (`elapsed=Xms branch_coverage=Y%`) on every coverage change
+- `IGNORE` filtering: paths whose branch decisions are all already covered are dropped from the test suite
+- `BranchCoverageTermination` becomes available
+
+Branch coverage is computed identically to `pathcov`'s `BranchCoverage.calculate(BlockMapDTO)`, so the threshold value matches what the pipeline reports.
+
+### Termination strategies
+
+Exactly one is selected via `jdart.termination=<class>,<int args...>`:
+
+| Strategy | Args | Stops when |
+|----------|------|------------|
+| `NeverTerminate` | -- | All reachable paths exhausted (default). |
+| `UpToFixedNumber` | `n` | After ~`n` completed paths. |
+| `TimedTermination` | `h,m,s[,ms]` | Wall-clock budget exceeded. |
+| `BranchCoverageTermination` | `pct` | Runtime branch coverage ≥ `pct`%. Needs a tracker. |
+| `TimedOrBranchCoverageTermination` | `h,m,s,pct` | Whichever fires first. Coverage arm is skipped (warn-once) if no tracker is registered. |
+
+## Test suite generation
+
+For each `OK` path: a test that calls the target with the solved inputs and asserts the recorded return value. For each `ERROR` path: an `assertThrows` test for the recorded exception type. Generated tests cover **full execution paths** only — they do not check side effects, invariants, or post-conditions. Both JUnit 4 and JUnit 5 are supported (`jdart.tests.junit_version`); under JUnit 5 each test is `@Tag`-annotated with the structural hash of every CFG block it covers, which is what enables the block-diff selective re-run feature.
+
+## Unsupported / limited
+
+| Feature | Status |
+|---------|--------|
+| Recursion | Path tree branches infinitely; bound with `max_nesting_depth`. |
+| Concurrency | Not supported. |
+| External libraries | Not instrumented during test generation; classpath them in manually. |
+| Unbounded loops | Path explosion; constrain inputs or set a time limit. |
+| Generics | Symbolic generics are not expressible. |
+| Lambda / reflection-heavy code | Partially broken (JPF limitation). |
+| `java.awt` and similar JVM-heavy APIs | Not / partially modelled by JPF. |
+
+## Determinism
+
+Inherited from JPF: `Random` always returns 0, `System.identityHashCode` is fixed, and time is frozen at execution start. True non-determinism only enters via uninstrumented external calls.
+
+## Heritage
+
+The engine is a fork of [JDart][jdart], originally from NASA Ames / CMU. To cite the underlying tool:
+
+> Kasper Luckow, Marko Dimjašević, Dimitra Giannakopoulou, Falk Howar, Malte Isberner, Temesghen Kahsai, Zvonimir Rakamarić, Vishwanath Raman, **JDart: A Dynamic Symbolic Analysis Framework**, TACAS 2016. \[[pdf](http://soarlab.org/publications/tacas2016-ldghikrr.pdf)\] \[[bibtex](http://soarlab.org/publications/tacas2016-ldghikrr.bib)\]
+
+Most JDart concepts (`.jpf` config, the `gov.nasa.jpf.jdart.*` packages, JPF tooling) are inherited unchanged. The COVET-specific additions live under `gov.nasa.jpf.jdart.exploration` (`CoverageHeuristicStrategy`), `gov.nasa.jpf.jdart.termination` (`BranchCoverageTermination`, `TimedOrBranchCoverageTermination`), and the `CfgCoverageTracker` plumbing on `ConcolicConfig`.
+
+[jdart]: https://github.com/psycopaths/jdart
