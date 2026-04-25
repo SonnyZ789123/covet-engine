@@ -30,8 +30,6 @@ header:
     - 'NOTICE'
     - 'build/**'
     - 'lib/**'
-    - 'eclipse/**'
-    - 'nbproject/**'
     - '**/*.md'
     - '**/*.xml'
     - '**/*.properties'
